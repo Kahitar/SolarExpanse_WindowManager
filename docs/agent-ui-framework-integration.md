@@ -9,7 +9,7 @@ The framework owns the shared notification-area button group and window shell. D
 - Framework plugin GUID: `com.mod.solarexpanse.uiframework`
 - Framework assembly: `SolarExpanse.UIFramework.dll`
 - Public namespace: `SolarExpanse.UIFramework`
-- Current version: `1.3.0`
+- Current version: `1.4.0`
 - Target framework: `net472`
 - Runtime: BepInEx plugin for Solar Expanse
 
@@ -342,6 +342,14 @@ Some dependent mods may still use Harmony or `NotificationManager` for unrelated
 ## Agent Compatibility Changelog
 
 This changelog is for agents updating dependent mods to newer framework versions. Add entries here whenever a framework release changes integration behavior or requires dependent mod changes.
+
+### 1.4.0
+
+Transient invalid canvas layouts no longer clear the user's saved dock placement. User-positioned docks preserve their offsets from the nearest horizontal and vertical viewport edges, and late rendered-viewport changes trigger placement restoration.
+
+Dependent mod action:
+
+- No dependent-mod code changes are required.
 
 ### 1.3.0
 

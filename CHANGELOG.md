@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.4.0] - 2026-06-04
+
+### Fixed
+
+- Transient invalid canvas layouts during live resizing no longer clear the user's saved dock placement.
+- User-positioned docks now preserve their offset from the nearest horizontal and vertical viewport edges across resizing.
+- Late rendered-viewport changes now trigger restoration from the saved edge-relative dock position.
+
 ## [1.3.0] - 2026-06-04
 
 ### Fixed

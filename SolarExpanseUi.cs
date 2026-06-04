@@ -53,8 +53,11 @@ namespace SolarExpanse.UIFramework
         private static ButtonVisualStyle _buttonVisualStyle;
         private static Vector2 _lastCanvasSize;
         private static Rect _lastVisibleCanvasRect;
-        private static Vector2 _buttonGroupNormalizedPos;
         private static bool _buttonGroupUserPositioned;
+        private static bool _buttonGroupAttachedRight;
+        private static bool _buttonGroupAttachedTop;
+        private static Vector2 _buttonGroupEdgeOffsets;
+        private static bool _buttonGroupPlacementNeedsRestore;
         private static bool _recoveringButtonGroupPosition;
         private static Sprite _generatedButtonSprite;
         private static Sprite _generatedActiveButtonSprite;
@@ -186,7 +189,7 @@ namespace SolarExpanse.UIFramework
             {
                 _lastCanvasSize = size;
                 _lastVisibleCanvasRect = visibleRect;
-                PositionButtonGroup();
+                _buttonGroupPlacementNeedsRestore = true;
                 foreach (UiWindowHandleImpl handle in SortedHandles)
                     handle.ClampWindow();
             }
@@ -246,12 +249,26 @@ namespace SolarExpanse.UIFramework
                 }
 
                 _buttonGroupUserPositioned = true;
-                StoreButtonGroupNormalizedPosition();
+                _buttonGroupPlacementNeedsRestore = false;
+                StoreButtonGroupEdgePlacement();
             }
         }
 
         internal static void EnsureButtonGroupVisible()
         {
+            Rect visibleRect = GetVisibleCanvasRect();
+            if (IsFinite(visibleRect) && !Approximately(_lastVisibleCanvasRect, visibleRect))
+            {
+                _lastVisibleCanvasRect = visibleRect;
+                _buttonGroupPlacementNeedsRestore = true;
+            }
+
+            if (_buttonGroupPlacementNeedsRestore)
+            {
+                _buttonGroupPlacementNeedsRestore = false;
+                PositionButtonGroup();
+            }
+
             ClampButtonGroupToVisibleCanvas();
         }
 
@@ -445,6 +462,7 @@ namespace SolarExpanse.UIFramework
             float height = ButtonGroupPadding * 2f + ButtonSize;
             _buttonGroupRect.sizeDelta = new Vector2(width, height);
             LayoutRebuilder.ForceRebuildLayoutImmediate(_buttonGroupRect);
+            _buttonGroupPlacementNeedsRestore = true;
             PositionButtonGroup();
         }
 
@@ -455,7 +473,7 @@ namespace SolarExpanse.UIFramework
 
             if (_buttonGroupUserPositioned)
             {
-                RestoreButtonGroupFromNormalizedPosition();
+                RestoreButtonGroupFromEdgePlacement();
                 _buttonGroupObject.transform.SetAsLastSibling();
                 return;
             }
@@ -592,6 +610,7 @@ namespace SolarExpanse.UIFramework
             _showNotificationButtonRect = null;
             _notificationHistoryTemplate = null;
             _font = null;
+            _buttonGroupPlacementNeedsRestore = false;
         }
 
         internal static string SanitizeId(string id)
@@ -613,7 +632,7 @@ namespace SolarExpanse.UIFramework
             return Mathf.Clamp(value, min, max);
         }
 
-        private static void StoreButtonGroupNormalizedPosition()
+        private static void StoreButtonGroupEdgePlacement()
         {
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
@@ -623,16 +642,18 @@ namespace SolarExpanse.UIFramework
             if (!IsFinite(visibleRect) || !IsFinite(bounds))
                 return;
 
-            GetCenterRange(visibleRect.xMin, visibleRect.xMax, bounds.extents.x,
-                out float minX, out float maxX);
-            GetCenterRange(visibleRect.yMin, visibleRect.yMax, bounds.extents.y,
-                out float minY, out float maxY);
-            _buttonGroupNormalizedPos = new Vector2(
-                Mathf.Approximately(minX, maxX) ? 0.5f : Mathf.InverseLerp(minX, maxX, bounds.center.x),
-                Mathf.Approximately(minY, maxY) ? 0.5f : Mathf.InverseLerp(minY, maxY, bounds.center.y));
+            float leftOffset = Mathf.Max(0f, bounds.min.x - visibleRect.xMin);
+            float rightOffset = Mathf.Max(0f, visibleRect.xMax - bounds.max.x);
+            float bottomOffset = Mathf.Max(0f, bounds.min.y - visibleRect.yMin);
+            float topOffset = Mathf.Max(0f, visibleRect.yMax - bounds.max.y);
+            _buttonGroupAttachedRight = rightOffset < leftOffset;
+            _buttonGroupAttachedTop = topOffset < bottomOffset;
+            _buttonGroupEdgeOffsets = new Vector2(
+                _buttonGroupAttachedRight ? rightOffset : leftOffset,
+                _buttonGroupAttachedTop ? topOffset : bottomOffset);
         }
 
-        private static void RestoreButtonGroupFromNormalizedPosition()
+        private static void RestoreButtonGroupFromEdgePlacement()
         {
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
@@ -645,16 +666,16 @@ namespace SolarExpanse.UIFramework
                 return;
             }
 
-            GetCenterRange(visibleRect.xMin, visibleRect.xMax, bounds.extents.x,
-                out float minX, out float maxX);
-            GetCenterRange(visibleRect.yMin, visibleRect.yMax, bounds.extents.y,
-                out float minY, out float maxY);
-            Vector2 normalized = new Vector2(
-                IsFinite(_buttonGroupNormalizedPos.x) ? Mathf.Clamp01(_buttonGroupNormalizedPos.x) : 0.5f,
-                IsFinite(_buttonGroupNormalizedPos.y) ? Mathf.Clamp01(_buttonGroupNormalizedPos.y) : 0.5f);
+            Vector2 offsets = new Vector2(
+                IsFinite(_buttonGroupEdgeOffsets.x) ? Mathf.Max(0f, _buttonGroupEdgeOffsets.x) : 0f,
+                IsFinite(_buttonGroupEdgeOffsets.y) ? Mathf.Max(0f, _buttonGroupEdgeOffsets.y) : 0f);
             Vector2 targetCenter = new Vector2(
-                Mathf.Lerp(minX, maxX, normalized.x),
-                Mathf.Lerp(minY, maxY, normalized.y));
+                _buttonGroupAttachedRight
+                    ? visibleRect.xMax - offsets.x - bounds.extents.x
+                    : visibleRect.xMin + offsets.x + bounds.extents.x,
+                _buttonGroupAttachedTop
+                    ? visibleRect.yMax - offsets.y - bounds.extents.y
+                    : visibleRect.yMin + offsets.y + bounds.extents.y);
             MoveButtonGroup(_buttonGroupRect.anchoredPosition +
                 targetCenter - (Vector2)bounds.center, storeUserPosition: false);
         }
@@ -728,17 +749,6 @@ namespace SolarExpanse.UIFramework
             return 0f;
         }
 
-        private static void GetCenterRange(float visibleMin, float visibleMax, float halfSize,
-            out float min, out float max)
-        {
-            min = visibleMin + halfSize;
-            max = visibleMax - halfSize;
-            if (min <= max)
-                return;
-
-            min = max = (visibleMin + visibleMax) * 0.5f;
-        }
-
         private static void RecoverButtonGroupPosition()
         {
             if (_buttonGroupRect == null || _recoveringButtonGroupPosition)
@@ -747,10 +757,9 @@ namespace SolarExpanse.UIFramework
             _recoveringButtonGroupPosition = true;
             try
             {
-                _buttonGroupUserPositioned = false;
-                _buttonGroupNormalizedPos = new Vector2(0.5f, 0.5f);
+                _buttonGroupPlacementNeedsRestore = true;
                 _buttonGroupRect.anchoredPosition = Vector2.zero;
-                PositionButtonGroup();
+                ClampButtonGroupToVisibleCanvas();
             }
             finally
             {
