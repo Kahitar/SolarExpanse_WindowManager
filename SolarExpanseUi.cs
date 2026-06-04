@@ -19,7 +19,6 @@ namespace SolarExpanse.UIFramework
         internal const float WindowDropOffset = 4f;
         private const float ButtonSpacing = 2f;
         private const float ButtonGroupPadding = 4f;
-        private const float ButtonGroupViewportMargin = 4f;
         private const float NotificationButtonGap = 10f;
         private const float ButtonTopVisualOffset = 5f;
 
@@ -53,6 +52,7 @@ namespace SolarExpanse.UIFramework
         private static UiButtonGroupMover _buttonGroupMover;
         private static ButtonVisualStyle _buttonVisualStyle;
         private static Vector2 _lastCanvasSize;
+        private static Rect _lastVisibleCanvasRect;
         private static Vector2 _buttonGroupNormalizedPos;
         private static bool _buttonGroupUserPositioned;
         private static bool _recoveringButtonGroupPosition;
@@ -154,6 +154,7 @@ namespace SolarExpanse.UIFramework
                 _font = FindFontAsset(notificationManager, historyTemplate);
                 _buttonVisualStyle = DiscoverButtonStyle(canvas, showButton);
                 _lastCanvasSize = _canvasRect.rect.size;
+                _lastVisibleCanvasRect = GetVisibleCanvasRect();
 
                 if (SortedHandles.Count == 0)
                 {
@@ -180,9 +181,11 @@ namespace SolarExpanse.UIFramework
                 return;
 
             Vector2 size = _canvasRect.rect.size;
-            if (size != _lastCanvasSize)
+            Rect visibleRect = GetVisibleCanvasRect();
+            if (size != _lastCanvasSize || !Approximately(_lastVisibleCanvasRect, visibleRect))
             {
                 _lastCanvasSize = size;
+                _lastVisibleCanvasRect = visibleRect;
                 PositionButtonGroup();
                 foreach (UiWindowHandleImpl handle in SortedHandles)
                     handle.ClampWindow();
@@ -229,7 +232,7 @@ namespace SolarExpanse.UIFramework
 
             Vector2 previousPosition = _buttonGroupRect.anchoredPosition;
             _buttonGroupRect.anchoredPosition = anchoredPosition;
-            ClampButtonGroupToVisibleCanvas(storeNormalizedPosition: false);
+            ClampButtonGroupToVisibleCanvas();
             if (!IsFinite(_buttonGroupRect.anchoredPosition))
                 return;
 
@@ -249,7 +252,7 @@ namespace SolarExpanse.UIFramework
 
         internal static void EnsureButtonGroupVisible()
         {
-            ClampButtonGroupToVisibleCanvas(storeNormalizedPosition: _buttonGroupUserPositioned);
+            ClampButtonGroupToVisibleCanvas();
         }
 
         internal static Vector2 CanvasLocalPointFromWorld(Vector3 worldPoint)
@@ -654,10 +657,9 @@ namespace SolarExpanse.UIFramework
                 Mathf.Lerp(minY, maxY, normalized.y));
             MoveButtonGroup(_buttonGroupRect.anchoredPosition +
                 targetCenter - (Vector2)bounds.center, storeUserPosition: false);
-            StoreButtonGroupNormalizedPosition();
         }
 
-        private static void ClampButtonGroupToVisibleCanvas(bool storeNormalizedPosition)
+        private static void ClampButtonGroupToVisibleCanvas()
         {
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
@@ -681,20 +683,17 @@ namespace SolarExpanse.UIFramework
                 GetBoundsCorrection(bounds.min.y, bounds.max.y, visibleRect.yMin, visibleRect.yMax));
             if (correction.sqrMagnitude > 0.0001f)
                 _buttonGroupRect.anchoredPosition += correction;
-
-            if (storeNormalizedPosition)
-                StoreButtonGroupNormalizedPosition();
         }
 
         private static Rect GetVisibleCanvasRect()
         {
             Rect fallback = _canvasRect != null ? _canvasRect.rect : default(Rect);
             if (_canvas == null || _canvasRect == null)
-                return InsetVisibleRect(fallback);
+                return fallback;
 
             Rect pixelRect = _canvas.pixelRect;
             if (pixelRect.width <= 0f || pixelRect.height <= 0f)
-                return InsetVisibleRect(fallback);
+                return fallback;
 
             Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay
                 ? null
@@ -703,24 +702,13 @@ namespace SolarExpanse.UIFramework
                     _canvasRect, pixelRect.min, cam, out Vector2 min) ||
                 !RectTransformUtility.ScreenPointToLocalPointInRectangle(
                     _canvasRect, pixelRect.max, cam, out Vector2 max))
-                return InsetVisibleRect(fallback);
+                return fallback;
 
-            return InsetVisibleRect(Rect.MinMaxRect(
+            return Rect.MinMaxRect(
                 Mathf.Min(min.x, max.x),
                 Mathf.Min(min.y, max.y),
                 Mathf.Max(min.x, max.x),
-                Mathf.Max(min.y, max.y)));
-        }
-
-        private static Rect InsetVisibleRect(Rect rect)
-        {
-            float marginX = Mathf.Min(ButtonGroupViewportMargin, rect.width * 0.25f);
-            float marginY = Mathf.Min(ButtonGroupViewportMargin, rect.height * 0.25f);
-            return Rect.MinMaxRect(
-                rect.xMin + marginX,
-                rect.yMin + marginY,
-                rect.xMax - marginX,
-                rect.yMax - marginY);
+                Mathf.Max(min.y, max.y));
         }
 
         private static Bounds GetButtonGroupBounds() =>
@@ -783,6 +771,12 @@ namespace SolarExpanse.UIFramework
         private static bool IsFinite(Bounds value) =>
             IsFinite(value.center.x) && IsFinite(value.center.y) && IsFinite(value.center.z) &&
             IsFinite(value.extents.x) && IsFinite(value.extents.y) && IsFinite(value.extents.z);
+
+        private static bool Approximately(Rect a, Rect b) =>
+            Mathf.Approximately(a.xMin, b.xMin) &&
+            Mathf.Approximately(a.xMax, b.xMax) &&
+            Mathf.Approximately(a.yMin, b.yMin) &&
+            Mathf.Approximately(a.yMax, b.yMax);
 
         private static bool IsDarkButtonImage(Image image)
         {

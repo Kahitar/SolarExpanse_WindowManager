@@ -345,7 +345,7 @@ This changelog is for agents updating dependent mods to newer framework versions
 
 ### 1.3.0
 
-The shared button dock now clamps its actual transformed bounds against the rendered canvas viewport immediately before rendering and automatically recovers invalid or fully off-screen positions.
+The shared button dock now clamps its actual transformed bounds against the rendered canvas viewport immediately before rendering and automatically recovers invalid or fully off-screen positions. Automatic resize clamping is temporary and does not overwrite the user's saved relative dock position.
 
 Dependent mod action:
 

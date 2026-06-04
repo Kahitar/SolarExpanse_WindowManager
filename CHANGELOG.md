@@ -6,7 +6,7 @@
 
 - The shared button dock now clamps its actual transformed bounds against the rendered canvas viewport immediately before rendering.
 - Added automatic dock-position recovery for invalid or fully off-screen positions caused by live game-window resizing.
-- Added a small viewport inset so the dock frame remains visible and draggable at screen edges.
+- Automatic resize clamping no longer overwrites the user's saved relative dock position, so enlarging the game window restores the dock to its prior relative position.
 
 ## [1.2.0] - 2026-06-04
 
