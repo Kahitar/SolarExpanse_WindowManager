@@ -12,7 +12,7 @@ A unified UI framework and windowing system for *Solar Expanse*.
 
 ### For Players
 *   **Unified Button Dock:** Consolidates all mod shortcuts into a compact button group right next to the game's notifications.
-*   **Fully Clean & Draggable:** Drag and reposition the button dock anywhere on your screen. Your layout remains saved.
+*   **Fully Clean & Draggable:** Drag and reposition the button dock anywhere on your screen. Open mod windows follow the dock while it moves, and your layout remains saved.
 *   **Consistent Window Shells:** Every mod window uses the same dark, beveled, native-looking frames with resize handles.
 *   **Smart ESC Key Behavior:** Pressing `ESC` closes the topmost mod window first rather than immediately opening the game's pause menu.
 *   **Focused Window Ordering:** Click any window to bring it to the front. Windows automatically clamp to your screen when changing resolution.
@@ -39,7 +39,7 @@ A unified UI framework and windowing system for *Solar Expanse*.
 
 ## Developer Quick Start
 
-To use Solar Expanse Window Manager as the base for your UI mod, follow these steps. For advanced implementations, please read the [Agent Integration Guide](docs/integration_guide.md) (or pass it to your AI code assistant).
+To use Solar Expanse Window Manager as the base for your UI mod, follow these steps. For advanced implementations, please read the [Agent Integration Guide](docs/agent-ui-framework-integration.md) (or pass it to your AI code assistant).
 
 ### 1. Add Reference to your .csproj
 Add a project reference to the framework DLL, making sure to set `Private="false"` so the assembly is not duplicated in your build output.
@@ -47,7 +47,7 @@ Add a project reference to the framework DLL, making sure to set `Private="false
 ```xml
 <ItemGroup>
   <ProjectReference 
-    Include="../SolarExpanse_UIFramework/SolarExpanse.UIFramework.csproj" 
+    Include="../SolarExpanse_WindowManager/SolarExpanse.UIFramework.csproj"
     Private="false" 
   />
 </ItemGroup>

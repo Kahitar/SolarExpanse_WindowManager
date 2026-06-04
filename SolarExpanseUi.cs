@@ -222,6 +222,7 @@ namespace SolarExpanse.UIFramework
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
 
+            Vector2 previousPosition = _buttonGroupRect.anchoredPosition;
             Rect canvasRect = _canvasRect.rect;
             Vector2 groupSize = _buttonGroupRect.sizeDelta;
             anchoredPosition.x = ClampEvenIfTooSmall(
@@ -232,6 +233,13 @@ namespace SolarExpanse.UIFramework
             _buttonGroupRect.anchoredPosition = anchoredPosition;
             if (storeUserPosition)
             {
+                Vector2 movement = anchoredPosition - previousPosition;
+                if (movement.sqrMagnitude > 0f)
+                {
+                    foreach (UiWindowHandleImpl handle in SortedHandles)
+                        handle.MoveOpenWindowBy(movement);
+                }
+
                 _buttonGroupUserPositioned = true;
                 StoreButtonGroupNormalizedPosition();
             }
@@ -821,6 +829,7 @@ namespace SolarExpanse.UIFramework
         public Color DotColor;
         public bool Blink;
         public float BlinkIntervalSeconds;
+        public Color? BlinkOffColor;
         public string Text;
         public Color? TextColor;
     }
@@ -958,9 +967,14 @@ namespace SolarExpanse.UIFramework
 
         public void SetButtonStatus(UiButtonStatus status)
         {
-            _status = NormalizeStatus(status);
-            _blinkTimer = 0f;
-            _blinkOn = true;
+            UiButtonStatus normalized = NormalizeStatus(status);
+            if (BlinkAppearanceChanged(_status, normalized))
+            {
+                _blinkTimer = 0f;
+                _blinkOn = true;
+            }
+
+            _status = normalized;
             ApplyStatus();
         }
 
@@ -971,22 +985,29 @@ namespace SolarExpanse.UIFramework
 
             if (!_status.Blink)
             {
-                _dotImage.color = _status.DotColor;
+                _blinkOn = true;
+                _dotImage.color = CurrentDotColor();
                 return;
             }
 
             _blinkTimer += deltaTime;
             float interval = _status.BlinkIntervalSeconds <= 0f ? 0.5f : _status.BlinkIntervalSeconds;
-            if (_blinkTimer >= interval)
+            while (_blinkTimer >= interval)
             {
-                _blinkTimer = 0f;
+                _blinkTimer -= interval;
                 _blinkOn = !_blinkOn;
             }
 
-            _dotImage.color = _blinkOn
-                ? _status.DotColor
-                : new Color(_status.DotColor.r * 0.08f, _status.DotColor.g * 0.08f,
-                    _status.DotColor.b * 0.08f, Mathf.Min(_status.DotColor.a, 0.25f));
+            _dotImage.color = CurrentDotColor();
+        }
+
+        internal void MoveOpenWindowBy(Vector2 movement)
+        {
+            if (!IsRealized || !_windowObject.activeSelf || movement.sqrMagnitude <= 0f)
+                return;
+
+            _windowRect.anchoredPosition += movement;
+            ClampWindow();
         }
 
         internal void SetWindowSizeAndClamp(Vector2 size)
@@ -1227,7 +1248,7 @@ namespace SolarExpanse.UIFramework
             if (_dotImage != null)
             {
                 _dotImage.gameObject.SetActive(_status.DotVisible);
-                _dotImage.color = _status.DotColor;
+                _dotImage.color = CurrentDotColor();
             }
 
             if (_statusText != null)
@@ -1272,6 +1293,25 @@ namespace SolarExpanse.UIFramework
             if (status.BlinkIntervalSeconds <= 0f)
                 status.BlinkIntervalSeconds = 0.5f;
             return status;
+        }
+
+        private Color CurrentDotColor()
+        {
+            if (!_status.Blink || _blinkOn)
+                return _status.DotColor;
+            if (_status.BlinkOffColor.HasValue)
+                return _status.BlinkOffColor.Value;
+            return new Color(_status.DotColor.r * 0.08f, _status.DotColor.g * 0.08f,
+                _status.DotColor.b * 0.08f, Mathf.Min(_status.DotColor.a, 0.25f));
+        }
+
+        private static bool BlinkAppearanceChanged(UiButtonStatus current, UiButtonStatus next)
+        {
+            return current.DotVisible != next.DotVisible ||
+                current.Blink != next.Blink ||
+                current.DotColor != next.DotColor ||
+                !Mathf.Approximately(current.BlinkIntervalSeconds, next.BlinkIntervalSeconds) ||
+                !Nullable.Equals(current.BlinkOffColor, next.BlinkOffColor);
         }
     }
 

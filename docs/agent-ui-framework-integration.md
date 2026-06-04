@@ -9,7 +9,7 @@ The framework owns the shared notification-area button group and window shell. D
 - Framework plugin GUID: `com.mod.solarexpanse.uiframework`
 - Framework assembly: `SolarExpanse.UIFramework.dll`
 - Public namespace: `SolarExpanse.UIFramework`
-- Current version: `1.0.0`
+- Current version: `1.1.0`
 - Target framework: `net472`
 - Runtime: BepInEx plugin for Solar Expanse
 
@@ -17,6 +17,7 @@ The framework owns the shared notification-area button group and window shell. D
 
 - A shared button group next to the game's notification UI.
 - Drag-and-drop repositioning for the whole button group.
+- Open framework windows move with the button group while the user drags it.
 - One compact button per registered mod window.
 - Game-styled dark beveled button visuals with active state.
 - Optional button status dot, blinking critical state, and small status text.
@@ -34,7 +35,7 @@ In the dependent mod `.csproj`, add a project reference to the framework and kee
 
 ```xml
 <ItemGroup>
-  <ProjectReference Include="../SolarExpanse_UIFramework/SolarExpanse.UIFramework.csproj" Private="false" />
+  <ProjectReference Include="../SolarExpanse_WindowManager/SolarExpanse.UIFramework.csproj" Private="false" />
 </ItemGroup>
 ```
 
@@ -168,6 +169,7 @@ windowHandle.SetButtonStatus(new UiButtonStatus
     DotColor = isCritical ? new Color(1f, 0.2f, 0.2f) : new Color(1f, 0.6f, 0f),
     Blink = isCritical,
     BlinkIntervalSeconds = 0.5f,
+    BlinkOffColor = isCritical ? new Color(0.10f, 0f, 0f, 1f) : (Color?)null,
     Text = count > 0 ? count.ToString() : null,
 });
 ```
@@ -178,8 +180,12 @@ Status behavior:
 - `DotColor` defaults to white if omitted.
 - `Blink=true` dims and restores the dot repeatedly.
 - `BlinkIntervalSeconds` defaults to `0.5` if omitted or invalid.
+- `BlinkOffColor` optionally replaces the default dimmed off phase with an explicit color.
+- Repeating an identical status update preserves the current blink phase.
 - `Text` is optional and should be very short.
 - `TextColor` is optional; omitted text uses the framework's muted status color.
+
+The shared button group is the movement handle for framework windows. While the user drags the group, every currently open registered window receives the dock's actual clamped movement delta and then clamps individually to the canvas. Dependent mods do not need to implement their own window-follow behavior.
 
 ## Updating While Closed
 
@@ -303,6 +309,7 @@ public struct UiButtonStatus
     public Color DotColor;
     public bool Blink;
     public float BlinkIntervalSeconds;
+    public Color? BlinkOffColor;
     public string Text;
     public Color? TextColor;
 }
@@ -335,13 +342,24 @@ Some dependent mods may still use Harmony or `NotificationManager` for unrelated
 
 This changelog is for agents updating dependent mods to newer framework versions. Add entries here whenever a framework release changes integration behavior or requires dependent mod changes.
 
+### 1.1.0
+
+Added reliable two-color status blinking and linked dock/window dragging.
+
+Dependent mod action:
+
+- No change is required for mods that already use `UiButtonStatus.Blink`; repeated status refreshes now preserve the active blink phase.
+- Mods that need an explicit off-phase color can set the additive nullable `UiButtonStatus.BlinkOffColor` field.
+- Do not add dependent-mod window-follow drag logic. The framework now moves all open registered windows with the shared button group.
+- Use `../SolarExpanse_WindowManager/SolarExpanse.UIFramework.csproj` for workspace project references after the base mod directory rename.
+
 ### 1.0.0
 
 Initial public framework API.
 
 Dependent mod action:
 
-- Add a `ProjectReference` to `../SolarExpanse_UIFramework/SolarExpanse.UIFramework.csproj` with `Private="false"`.
+- Add a `ProjectReference` to `../SolarExpanse_WindowManager/SolarExpanse.UIFramework.csproj` with `Private="false"`.
 - Add `[BepInDependency(UiFrameworkPlugin.PluginGuid, BepInDependency.DependencyFlags.HardDependency)]`.
 - Register windows with `SolarExpanseUi.RegisterWindow`.
 - Move UI construction under `UiWindowContext.ContentRoot`.
