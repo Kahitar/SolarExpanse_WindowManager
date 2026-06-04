@@ -1,5 +1,24 @@
 # Changelog
 
+## [1.3.0] - 2026-06-04
+
+### Fixed
+
+- The shared button dock now clamps its actual transformed bounds against the rendered canvas viewport immediately before rendering.
+- Added automatic dock-position recovery for invalid or fully off-screen positions caused by live game-window resizing.
+- Added a small viewport inset so the dock frame remains visible and draggable at screen edges.
+
+## [1.2.0] - 2026-06-04
+
+### Changed
+
+- Status dots now use the same anti-aliased TextMeshPro `●` glyph style as tracker row indicators.
+- Status-dot blinking now runs on an always-active component attached directly to each visible button dot.
+
+### Fixed
+
+- Fixed critical status dots remaining continuously bright instead of blinking.
+
 ## [1.1.0] - 2026-06-04
 
 ### Added

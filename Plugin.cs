@@ -10,7 +10,7 @@ namespace SolarExpanse.UIFramework
     {
         public const string PluginGuid = "com.mod.solarexpanse.uiframework";
         public const string PluginName = "Solar Expanse UI Framework";
-        public const string PluginVersion = "1.1.0";
+        public const string PluginVersion = "1.3.0";
 
         internal static ManualLogSource FrameworkLog;
 

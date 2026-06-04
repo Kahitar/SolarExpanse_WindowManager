@@ -12,11 +12,11 @@ A unified UI framework and windowing system for *Solar Expanse*.
 
 ### For Players
 *   **Unified Button Dock:** Consolidates all mod shortcuts into a compact button group right next to the game's notifications.
-*   **Fully Clean & Draggable:** Drag and reposition the button dock anywhere on your screen. Open mod windows follow the dock while it moves, and your layout remains saved.
+*   **Fully Clean & Draggable:** Drag and reposition the button dock anywhere on your screen. Open mod windows follow the dock while it moves, your layout remains saved, and the dock automatically stays reachable when the game window is resized.
 *   **Consistent Window Shells:** Every mod window uses the same dark, beveled, native-looking frames with resize handles.
 *   **Smart ESC Key Behavior:** Pressing `ESC` closes the topmost mod window first rather than immediately opening the game's pause menu.
 *   **Focused Window Ordering:** Click any window to bring it to the front. Windows automatically clamp to your screen when changing resolution.
-*   **Rich Status Indicators:** Mod buttons can display active states, notification dots, warning blinks, and status text.
+*   **Rich Status Indicators:** Mod buttons can display active states, anti-aliased notification dots, warning blinks, and status text.
 
 ### For Developers / Modders
 *   **Zero Shell Boilerplate:** Register your window size, icon, and callbacks, and let SEWM handle the rest.

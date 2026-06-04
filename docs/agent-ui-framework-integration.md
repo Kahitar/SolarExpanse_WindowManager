@@ -9,7 +9,7 @@ The framework owns the shared notification-area button group and window shell. D
 - Framework plugin GUID: `com.mod.solarexpanse.uiframework`
 - Framework assembly: `SolarExpanse.UIFramework.dll`
 - Public namespace: `SolarExpanse.UIFramework`
-- Current version: `1.1.0`
+- Current version: `1.3.0`
 - Target framework: `net472`
 - Runtime: BepInEx plugin for Solar Expanse
 
@@ -18,9 +18,10 @@ The framework owns the shared notification-area button group and window shell. D
 - A shared button group next to the game's notification UI.
 - Drag-and-drop repositioning for the whole button group.
 - Open framework windows move with the button group while the user drags it.
+- The button group automatically remains visible and draggable across live game-window and canvas resizing.
 - One compact button per registered mod window.
 - Game-styled dark beveled button visuals with active state.
-- Optional button status dot, blinking critical state, and small status text.
+- Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
 - Game-styled window shell cloned from the notification history panel.
 - Resizable windows with minimum size enforcement.
 - Window clamping to the canvas when the canvas size changes.
@@ -341,6 +342,24 @@ Some dependent mods may still use Harmony or `NotificationManager` for unrelated
 ## Agent Compatibility Changelog
 
 This changelog is for agents updating dependent mods to newer framework versions. Add entries here whenever a framework release changes integration behavior or requires dependent mod changes.
+
+### 1.3.0
+
+The shared button dock now clamps its actual transformed bounds against the rendered canvas viewport immediately before rendering and automatically recovers invalid or fully off-screen positions.
+
+Dependent mod action:
+
+- No dependent-mod code changes are required.
+- Do not add custom screen-resize recovery or dock-clamping logic.
+
+### 1.2.0
+
+Status dots now use the same TextMeshPro `●` glyph style as tracker row indicators, and blinking runs directly on each visible button dot.
+
+Dependent mod action:
+
+- No dependent-mod code changes are required.
+- Continue using `UiButtonStatus.Blink`, `BlinkIntervalSeconds`, and optional `BlinkOffColor`.
 
 ### 1.1.0
 

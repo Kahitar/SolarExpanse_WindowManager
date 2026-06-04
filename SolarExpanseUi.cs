@@ -19,6 +19,7 @@ namespace SolarExpanse.UIFramework
         internal const float WindowDropOffset = 4f;
         private const float ButtonSpacing = 2f;
         private const float ButtonGroupPadding = 4f;
+        private const float ButtonGroupViewportMargin = 4f;
         private const float NotificationButtonGap = 10f;
         private const float ButtonTopVisualOffset = 5f;
 
@@ -54,7 +55,7 @@ namespace SolarExpanse.UIFramework
         private static Vector2 _lastCanvasSize;
         private static Vector2 _buttonGroupNormalizedPos;
         private static bool _buttonGroupUserPositioned;
-        private static Sprite _dotSprite;
+        private static bool _recoveringButtonGroupPosition;
         private static Sprite _generatedButtonSprite;
         private static Sprite _generatedActiveButtonSprite;
         private static Sprite _generatedGroupFrameSprite;
@@ -175,9 +176,6 @@ namespace SolarExpanse.UIFramework
 
         internal static void InternalUpdate()
         {
-            foreach (UiWindowHandleImpl handle in SortedHandles)
-                handle.InternalUpdate(Time.unscaledDeltaTime);
-
             if (_canvasRect == null)
                 return;
 
@@ -189,6 +187,8 @@ namespace SolarExpanse.UIFramework
                 foreach (UiWindowHandleImpl handle in SortedHandles)
                     handle.ClampWindow();
             }
+
+            EnsureButtonGroupVisible();
         }
 
         internal static bool CloseTopmostWindow()
@@ -221,19 +221,21 @@ namespace SolarExpanse.UIFramework
         {
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
+            if (!IsFinite(anchoredPosition))
+            {
+                RecoverButtonGroupPosition();
+                return;
+            }
 
             Vector2 previousPosition = _buttonGroupRect.anchoredPosition;
-            Rect canvasRect = _canvasRect.rect;
-            Vector2 groupSize = _buttonGroupRect.sizeDelta;
-            anchoredPosition.x = ClampEvenIfTooSmall(
-                anchoredPosition.x, canvasRect.xMin + groupSize.x, canvasRect.xMax);
-            anchoredPosition.y = ClampEvenIfTooSmall(
-                anchoredPosition.y, canvasRect.yMin + groupSize.y, canvasRect.yMax);
-
             _buttonGroupRect.anchoredPosition = anchoredPosition;
+            ClampButtonGroupToVisibleCanvas(storeNormalizedPosition: false);
+            if (!IsFinite(_buttonGroupRect.anchoredPosition))
+                return;
+
             if (storeUserPosition)
             {
-                Vector2 movement = anchoredPosition - previousPosition;
+                Vector2 movement = _buttonGroupRect.anchoredPosition - previousPosition;
                 if (movement.sqrMagnitude > 0f)
                 {
                     foreach (UiWindowHandleImpl handle in SortedHandles)
@@ -243,6 +245,11 @@ namespace SolarExpanse.UIFramework
                 _buttonGroupUserPositioned = true;
                 StoreButtonGroupNormalizedPosition();
             }
+        }
+
+        internal static void EnsureButtonGroupVisible()
+        {
+            ClampButtonGroupToVisibleCanvas(storeNormalizedPosition: _buttonGroupUserPositioned);
         }
 
         internal static Vector2 CanvasLocalPointFromWorld(Vector3 worldPoint)
@@ -258,16 +265,6 @@ namespace SolarExpanse.UIFramework
             RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 _canvasRect, screenPoint, cam, out localPoint);
             return localPoint;
-        }
-
-        internal static Sprite DotSprite
-        {
-            get
-            {
-                if (_dotSprite == null)
-                    _dotSprite = BuildDotSprite();
-                return _dotSprite;
-            }
         }
 
         private static bool CanRealize =>
@@ -395,6 +392,7 @@ namespace SolarExpanse.UIFramework
             groupImage.raycastTarget = true;
 
             _buttonGroupMover = _buttonGroupObject.AddComponent<UiButtonGroupMover>();
+            _buttonGroupObject.AddComponent<UiButtonGroupViewportGuard>();
 
             _buttonGroupLayout = _buttonGroupObject.AddComponent<HorizontalLayoutGroup>();
             _buttonGroupLayout.childControlWidth = false;
@@ -617,16 +615,18 @@ namespace SolarExpanse.UIFramework
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
 
-            Rect canvasRect = _canvasRect.rect;
-            Vector2 groupSize = _buttonGroupRect.sizeDelta;
-            float minX = canvasRect.xMin + groupSize.x;
-            float maxX = canvasRect.xMax;
-            float minY = canvasRect.yMin + groupSize.y;
-            float maxY = canvasRect.yMax;
-            Vector2 pos = _buttonGroupRect.anchoredPosition;
+            Rect visibleRect = GetVisibleCanvasRect();
+            Bounds bounds = GetButtonGroupBounds();
+            if (!IsFinite(visibleRect) || !IsFinite(bounds))
+                return;
+
+            GetCenterRange(visibleRect.xMin, visibleRect.xMax, bounds.extents.x,
+                out float minX, out float maxX);
+            GetCenterRange(visibleRect.yMin, visibleRect.yMax, bounds.extents.y,
+                out float minY, out float maxY);
             _buttonGroupNormalizedPos = new Vector2(
-                Mathf.Approximately(minX, maxX) ? 0.5f : Mathf.InverseLerp(minX, maxX, pos.x),
-                Mathf.Approximately(minY, maxY) ? 0.5f : Mathf.InverseLerp(minY, maxY, pos.y));
+                Mathf.Approximately(minX, maxX) ? 0.5f : Mathf.InverseLerp(minX, maxX, bounds.center.x),
+                Mathf.Approximately(minY, maxY) ? 0.5f : Mathf.InverseLerp(minY, maxY, bounds.center.y));
         }
 
         private static void RestoreButtonGroupFromNormalizedPosition()
@@ -634,17 +634,155 @@ namespace SolarExpanse.UIFramework
             if (_buttonGroupRect == null || _canvasRect == null)
                 return;
 
-            Rect canvasRect = _canvasRect.rect;
-            Vector2 groupSize = _buttonGroupRect.sizeDelta;
-            float minX = canvasRect.xMin + groupSize.x;
-            float maxX = canvasRect.xMax;
-            float minY = canvasRect.yMin + groupSize.y;
-            float maxY = canvasRect.yMax;
-            MoveButtonGroup(new Vector2(
-                Mathf.Lerp(minX, maxX, _buttonGroupNormalizedPos.x),
-                Mathf.Lerp(minY, maxY, _buttonGroupNormalizedPos.y)), storeUserPosition: false);
+            Rect visibleRect = GetVisibleCanvasRect();
+            Bounds bounds = GetButtonGroupBounds();
+            if (!IsFinite(visibleRect) || !IsFinite(bounds))
+            {
+                RecoverButtonGroupPosition();
+                return;
+            }
+
+            GetCenterRange(visibleRect.xMin, visibleRect.xMax, bounds.extents.x,
+                out float minX, out float maxX);
+            GetCenterRange(visibleRect.yMin, visibleRect.yMax, bounds.extents.y,
+                out float minY, out float maxY);
+            Vector2 normalized = new Vector2(
+                IsFinite(_buttonGroupNormalizedPos.x) ? Mathf.Clamp01(_buttonGroupNormalizedPos.x) : 0.5f,
+                IsFinite(_buttonGroupNormalizedPos.y) ? Mathf.Clamp01(_buttonGroupNormalizedPos.y) : 0.5f);
+            Vector2 targetCenter = new Vector2(
+                Mathf.Lerp(minX, maxX, normalized.x),
+                Mathf.Lerp(minY, maxY, normalized.y));
+            MoveButtonGroup(_buttonGroupRect.anchoredPosition +
+                targetCenter - (Vector2)bounds.center, storeUserPosition: false);
             StoreButtonGroupNormalizedPosition();
         }
+
+        private static void ClampButtonGroupToVisibleCanvas(bool storeNormalizedPosition)
+        {
+            if (_buttonGroupRect == null || _canvasRect == null)
+                return;
+
+            if (!IsFinite(_buttonGroupRect.anchoredPosition))
+            {
+                RecoverButtonGroupPosition();
+                return;
+            }
+
+            Rect visibleRect = GetVisibleCanvasRect();
+            Bounds bounds = GetButtonGroupBounds();
+            if (!IsFinite(visibleRect) || !IsFinite(bounds))
+            {
+                RecoverButtonGroupPosition();
+                return;
+            }
+
+            Vector2 correction = new Vector2(
+                GetBoundsCorrection(bounds.min.x, bounds.max.x, visibleRect.xMin, visibleRect.xMax),
+                GetBoundsCorrection(bounds.min.y, bounds.max.y, visibleRect.yMin, visibleRect.yMax));
+            if (correction.sqrMagnitude > 0.0001f)
+                _buttonGroupRect.anchoredPosition += correction;
+
+            if (storeNormalizedPosition)
+                StoreButtonGroupNormalizedPosition();
+        }
+
+        private static Rect GetVisibleCanvasRect()
+        {
+            Rect fallback = _canvasRect != null ? _canvasRect.rect : default(Rect);
+            if (_canvas == null || _canvasRect == null)
+                return InsetVisibleRect(fallback);
+
+            Rect pixelRect = _canvas.pixelRect;
+            if (pixelRect.width <= 0f || pixelRect.height <= 0f)
+                return InsetVisibleRect(fallback);
+
+            Camera cam = _canvas.renderMode == RenderMode.ScreenSpaceOverlay
+                ? null
+                : _canvas.worldCamera;
+            if (!RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    _canvasRect, pixelRect.min, cam, out Vector2 min) ||
+                !RectTransformUtility.ScreenPointToLocalPointInRectangle(
+                    _canvasRect, pixelRect.max, cam, out Vector2 max))
+                return InsetVisibleRect(fallback);
+
+            return InsetVisibleRect(Rect.MinMaxRect(
+                Mathf.Min(min.x, max.x),
+                Mathf.Min(min.y, max.y),
+                Mathf.Max(min.x, max.x),
+                Mathf.Max(min.y, max.y)));
+        }
+
+        private static Rect InsetVisibleRect(Rect rect)
+        {
+            float marginX = Mathf.Min(ButtonGroupViewportMargin, rect.width * 0.25f);
+            float marginY = Mathf.Min(ButtonGroupViewportMargin, rect.height * 0.25f);
+            return Rect.MinMaxRect(
+                rect.xMin + marginX,
+                rect.yMin + marginY,
+                rect.xMax - marginX,
+                rect.yMax - marginY);
+        }
+
+        private static Bounds GetButtonGroupBounds() =>
+            RectTransformUtility.CalculateRelativeRectTransformBounds(_canvasRect, _buttonGroupRect);
+
+        private static float GetBoundsCorrection(float boundsMin, float boundsMax,
+            float visibleMin, float visibleMax)
+        {
+            float boundsSize = boundsMax - boundsMin;
+            float visibleSize = visibleMax - visibleMin;
+            if (boundsSize > visibleSize)
+                return (visibleMin + visibleMax - boundsMin - boundsMax) * 0.5f;
+            if (boundsMin < visibleMin)
+                return visibleMin - boundsMin;
+            if (boundsMax > visibleMax)
+                return visibleMax - boundsMax;
+            return 0f;
+        }
+
+        private static void GetCenterRange(float visibleMin, float visibleMax, float halfSize,
+            out float min, out float max)
+        {
+            min = visibleMin + halfSize;
+            max = visibleMax - halfSize;
+            if (min <= max)
+                return;
+
+            min = max = (visibleMin + visibleMax) * 0.5f;
+        }
+
+        private static void RecoverButtonGroupPosition()
+        {
+            if (_buttonGroupRect == null || _recoveringButtonGroupPosition)
+                return;
+
+            _recoveringButtonGroupPosition = true;
+            try
+            {
+                _buttonGroupUserPositioned = false;
+                _buttonGroupNormalizedPos = new Vector2(0.5f, 0.5f);
+                _buttonGroupRect.anchoredPosition = Vector2.zero;
+                PositionButtonGroup();
+            }
+            finally
+            {
+                _recoveringButtonGroupPosition = false;
+            }
+        }
+
+        private static bool IsFinite(float value) =>
+            !float.IsNaN(value) && !float.IsInfinity(value);
+
+        private static bool IsFinite(Vector2 value) =>
+            IsFinite(value.x) && IsFinite(value.y);
+
+        private static bool IsFinite(Rect value) =>
+            IsFinite(value.xMin) && IsFinite(value.xMax) &&
+            IsFinite(value.yMin) && IsFinite(value.yMax);
+
+        private static bool IsFinite(Bounds value) =>
+            IsFinite(value.center.x) && IsFinite(value.center.y) && IsFinite(value.center.z) &&
+            IsFinite(value.extents.x) && IsFinite(value.extents.y) && IsFinite(value.extents.z);
 
         private static bool IsDarkButtonImage(Image image)
         {
@@ -737,29 +875,6 @@ namespace SolarExpanse.UIFramework
             return sprite;
         }
 
-        private static Sprite BuildDotSprite()
-        {
-            const int size = 16;
-            var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
-            tex.hideFlags = HideFlags.HideAndDontSave;
-            Color[] pixels = new Color[size * size];
-            Vector2 center = new Vector2((size - 1) / 2f, (size - 1) / 2f);
-            float radius = 7.2f;
-            for (int y = 0; y < size; y++)
-            {
-                for (int x = 0; x < size; x++)
-                {
-                    float d = Vector2.Distance(new Vector2(x, y), center);
-                    float alpha = d <= radius ? 1f : d <= radius + 1f ? 1f - (d - radius) : 0f;
-                    pixels[y * size + x] = new Color(1f, 1f, 1f, alpha);
-                }
-            }
-
-            tex.SetPixels(pixels);
-            tex.Apply();
-            return Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f), size);
-        }
-
         [HarmonyPatch(typeof(NotificationManager), "Awake")]
         private static class NotificationManagerAwakePatch
         {
@@ -844,7 +959,7 @@ namespace SolarExpanse.UIFramework
         private ButtonVisualStyle _buttonStyle;
         private GameObject _buttonObject;
         private Image _buttonImage;
-        private Image _dotImage;
+        private UiStatusDotPresenter _dotPresenter;
         private TextMeshProUGUI _statusText;
         private RectTransform _buttonRect;
         private GameObject _windowObject;
@@ -855,8 +970,6 @@ namespace SolarExpanse.UIFramework
         private bool _requestedOpen;
         private bool _hovered;
         private bool _pressed;
-        private float _blinkTimer;
-        private bool _blinkOn = true;
 
         internal UiWindowHandleImpl(UiWindowRegistration registration)
         {
@@ -967,38 +1080,8 @@ namespace SolarExpanse.UIFramework
 
         public void SetButtonStatus(UiButtonStatus status)
         {
-            UiButtonStatus normalized = NormalizeStatus(status);
-            if (BlinkAppearanceChanged(_status, normalized))
-            {
-                _blinkTimer = 0f;
-                _blinkOn = true;
-            }
-
-            _status = normalized;
+            _status = NormalizeStatus(status);
             ApplyStatus();
-        }
-
-        internal void InternalUpdate(float deltaTime)
-        {
-            if (!IsRealized || _dotImage == null || !_status.DotVisible)
-                return;
-
-            if (!_status.Blink)
-            {
-                _blinkOn = true;
-                _dotImage.color = CurrentDotColor();
-                return;
-            }
-
-            _blinkTimer += deltaTime;
-            float interval = _status.BlinkIntervalSeconds <= 0f ? 0.5f : _status.BlinkIntervalSeconds;
-            while (_blinkTimer >= interval)
-            {
-                _blinkTimer -= interval;
-                _blinkOn = !_blinkOn;
-            }
-
-            _dotImage.color = CurrentDotColor();
         }
 
         internal void MoveOpenWindowBy(Vector2 movement)
@@ -1046,7 +1129,7 @@ namespace SolarExpanse.UIFramework
 
             _buttonObject = null;
             _buttonImage = null;
-            _dotImage = null;
+            _dotPresenter = null;
             _statusText = null;
             _buttonRect = null;
             _windowObject = null;
@@ -1101,11 +1184,18 @@ namespace SolarExpanse.UIFramework
             dotRT.anchorMin = new Vector2(0f, 1f);
             dotRT.anchorMax = new Vector2(0f, 1f);
             dotRT.pivot = new Vector2(0.5f, 0.5f);
-            dotRT.sizeDelta = new Vector2(7f, 7f);
+            dotRT.sizeDelta = new Vector2(14f, 14f);
             dotRT.anchoredPosition = new Vector2(8f, -8f);
-            _dotImage = dotGO.AddComponent<Image>();
-            _dotImage.sprite = SolarExpanseUi.DotSprite;
-            _dotImage.raycastTarget = false;
+            TextMeshProUGUI dotLabel = dotGO.AddComponent<TextMeshProUGUI>();
+            if (font != null)
+                dotLabel.font = font;
+            dotLabel.text = "●";
+            dotLabel.fontSize = 11f;
+            dotLabel.enableWordWrapping = false;
+            dotLabel.alignment = TextAlignmentOptions.Center;
+            dotLabel.raycastTarget = false;
+            _dotPresenter = dotGO.AddComponent<UiStatusDotPresenter>();
+            _dotPresenter.Label = dotLabel;
 
             GameObject textGO = new GameObject("StatusText", typeof(RectTransform));
             textGO.transform.SetParent(_buttonObject.transform, false);
@@ -1245,11 +1335,7 @@ namespace SolarExpanse.UIFramework
             if (!IsRealized)
                 return;
 
-            if (_dotImage != null)
-            {
-                _dotImage.gameObject.SetActive(_status.DotVisible);
-                _dotImage.color = CurrentDotColor();
-            }
+            _dotPresenter?.SetStatus(_status);
 
             if (_statusText != null)
             {
@@ -1295,7 +1381,54 @@ namespace SolarExpanse.UIFramework
             return status;
         }
 
-        private Color CurrentDotColor()
+    }
+
+    internal sealed class UiStatusDotPresenter : MonoBehaviour
+    {
+        internal TextMeshProUGUI Label;
+
+        private UiButtonStatus _status;
+        private float _blinkTimer;
+        private bool _blinkOn = true;
+
+        internal void SetStatus(UiButtonStatus status)
+        {
+            if (BlinkAppearanceChanged(_status, status))
+            {
+                _blinkTimer = 0f;
+                _blinkOn = true;
+            }
+
+            _status = status;
+            Apply();
+        }
+
+        private void Update()
+        {
+            if (Label == null || !_status.DotVisible || !_status.Blink)
+                return;
+
+            _blinkTimer += Time.unscaledDeltaTime;
+            float interval = _status.BlinkIntervalSeconds <= 0f ? 0.5f : _status.BlinkIntervalSeconds;
+            while (_blinkTimer >= interval)
+            {
+                _blinkTimer -= interval;
+                _blinkOn = !_blinkOn;
+            }
+
+            Label.color = CurrentColor();
+        }
+
+        private void Apply()
+        {
+            if (Label == null)
+                return;
+
+            Label.gameObject.SetActive(_status.DotVisible);
+            Label.color = CurrentColor();
+        }
+
+        private Color CurrentColor()
         {
             if (!_status.Blink || _blinkOn)
                 return _status.DotColor;
@@ -1333,6 +1466,17 @@ namespace SolarExpanse.UIFramework
         internal UiWindowHandleImpl Handle;
 
         public void OnPointerDown(PointerEventData eventData) => Handle?.BringToFront();
+    }
+
+    internal sealed class UiButtonGroupViewportGuard : MonoBehaviour
+    {
+        private void OnEnable() => Canvas.willRenderCanvases += BeforeCanvasRender;
+
+        private void OnDisable() => Canvas.willRenderCanvases -= BeforeCanvasRender;
+
+        private void LateUpdate() => SolarExpanseUi.EnsureButtonGroupVisible();
+
+        private static void BeforeCanvasRender() => SolarExpanseUi.EnsureButtonGroupVisible();
     }
 
     internal sealed class UiButtonGroupMover : MonoBehaviour,
