@@ -22,6 +22,7 @@ The framework owns the shared notification-area button group and window shell. D
 - One compact button per registered mod window.
 - Game-styled dark beveled button visuals with active state.
 - Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
+- Optional game icon lookup by name before falling back to a generated or mod-provided sprite.
 - Game-styled window shell cloned from the notification history panel.
 - Resizable windows with minimum size enforcement.
 - Window clamping to the canvas when the canvas size changes.
@@ -85,6 +86,7 @@ internal static class ExampleUi
             DisplayName = "Example",
             Order = 40,
             Icon = BuildIcon(),
+            GameIconNames = new[] { "resourceIcon", "spaceModuleIcon" },
             IconTint = Color.white,
             DefaultWindowSize = new Vector2(720f, 300f),
             MinimumWindowSize = new Vector2(500f, 180f),
@@ -100,7 +102,8 @@ Registration requirements:
 
 - `Id` must be unique across all framework-based mods.
 - `DisplayName` is required and is used for framework context and diagnostics.
-- `Icon` is required. Use a compact sprite that remains readable at about `28x28`.
+- `Icon` is required as a fallback. Use a compact sprite that remains readable at about `28x28`.
+- `GameIconNames` is optional. The framework tries these names against loaded game sprites and TextMeshPro sprite assets before falling back to `Icon`; see `docs/game-icons.md`.
 - `BuildContent` is required. It is called once when the game UI is realized.
 - `Order` controls button ordering. Lower numbers appear earlier in the shared button group.
 - `DefaultWindowSize` defaults to `720x300` if missing or invalid.
@@ -227,7 +230,7 @@ Framework windows are intended to match the game's compact dark UI. Dependent mo
 - Use dense, readable panels rather than large marketing-style or web-style layouts.
 - Prefer dark translucent backgrounds, subdued borders, and small uppercase tab labels when matching tracker-style UI.
 - Avoid white or bright rectangular buttons near the framework button group.
-- Use compact generated sprites or existing game sprites for button icons.
+- Use compact generated sprites or existing game sprites for button icons. Check `docs/game-icons.md` for generated game icon candidates.
 - Keep status text short enough to fit inside the button.
 - Use the framework's shell, resize handle, and button active state instead of custom outer chrome.
 
@@ -256,6 +259,7 @@ public sealed class UiWindowRegistration
     public string DisplayName { get; set; }
     public int Order { get; set; }
     public Sprite Icon { get; set; }
+    public string[] GameIconNames { get; set; }
     public Color? IconTint { get; set; }
     public Vector2 DefaultWindowSize { get; set; }
     public Vector2 MinimumWindowSize { get; set; }
@@ -323,7 +327,10 @@ From the framework directory:
 ```sh
 mise run build
 mise run package
+mise run update-game-icons
 ```
+
+`mise run update-game-icons` reads `$SOLAR_EXPANSE_ROOT/Solar Expanse_Data/Managed/Assembly-CSharp.dll` and regenerates `docs/game-icons.md` with icon/sprite-related candidates found in the game assembly.
 
 From each dependent mod directory:
 

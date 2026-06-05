@@ -1,0 +1,127 @@
+#!/usr/bin/env bash
+#MISE description="Discover game icon candidates and update docs/game-icons.md"
+set -euo pipefail
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+repo_root="$(cd -- "$script_dir/.." && pwd)"
+cd "$repo_root"
+
+python3 - <<'PY'
+from __future__ import annotations
+
+import os
+import re
+from pathlib import Path
+
+repo_root = Path.cwd()
+game_root = os.environ.get("SOLAR_EXPANSE_ROOT", "")
+if not game_root:
+    raise SystemExit("error: SOLAR_EXPANSE_ROOT is not set. Run through mise or set it to the Solar Expanse game root.")
+
+assembly = Path(game_root) / "Solar Expanse_Data" / "Managed" / "Assembly-CSharp.dll"
+if not assembly.exists():
+    raise SystemExit(f"error: game assembly not found: {assembly}")
+
+data = assembly.read_bytes()
+
+strings: set[str] = set()
+for raw in re.findall(rb"[\x20-\x7e]{3,}", data):
+    strings.add(raw.decode("utf-8", errors="ignore"))
+for raw in re.findall(rb"(?:[\x20-\x7e]\x00){3,}", data):
+    strings.add(raw.decode("utf-16le", errors="ignore"))
+
+identifier = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
+exclude_exact = {
+    "DragAndDropIconSource",
+    "GhostSoiConfig",
+    "HelpScriptPlanetSprites",
+    "Icon",
+    "IconEnabled",
+    "IconWithProgressBar",
+    "MainUIContract",
+    "Sprite",
+    "sprite",
+    "SpriteRenderer",
+    "SpriteTargetUI",
+    "SystemObjectIcon",
+    "TMP_SpriteAsset",
+    "TMP_SpriteGlyph",
+    "TaskIconAttribute",
+}
+exclude_prefixes = ("get_", "set_", "add_", "remove_")
+exclude_suffixes = ("Config", "Controller", "Manager")
+method_like_prefixes = ("Change", "Create", "Get", "Instantiate", "Load")
+
+candidates: list[str] = []
+code_identifiers: list[str] = []
+for value in sorted(strings, key=str.casefold):
+    lower = value.lower()
+    if "icon" not in lower and "sprite" not in lower:
+        continue
+    if not identifier.match(value):
+        continue
+    if value in exclude_exact or value.startswith(exclude_prefixes):
+        continue
+    if value.startswith(method_like_prefixes):
+        code_identifiers.append(value)
+        continue
+    if value.endswith(exclude_suffixes):
+        code_identifiers.append(value)
+        continue
+    if "dictionary" in lower or "prefab" in lower or "parent" in lower or "offset" in lower:
+        code_identifiers.append(value)
+        continue
+    candidates.append(value)
+
+# De-duplicate case-insensitively while preserving preferred spelling.
+def unique_casefold(values: list[str]) -> list[str]:
+    seen: set[str] = set()
+    out: list[str] = []
+    for value in values:
+        key = value.casefold()
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append(value)
+    return out
+
+candidates = unique_casefold(candidates)
+code_identifiers = unique_casefold(code_identifiers)
+
+lines: list[str] = [
+    "# Solar Expanse Game Icon Candidates",
+    "",
+    "This file is generated from `Assembly-CSharp.dll` by `mise run update-game-icons`.",
+    "It lists icon- and sprite-related names discovered in the game's managed code so UI framework consumers can choose `UiWindowRegistration.GameIconNames` values before falling back to a generated icon.",
+    "",
+    "Runtime lookup is case-insensitive and searches loaded Unity `Sprite` objects first, then TextMeshPro sprite assets. These names are candidates from code metadata; verify important choices in-game because some names may be fields or helper identifiers rather than loaded sprite asset names.",
+    "",
+    "## Recommended `GameIconNames` Candidates",
+    "",
+]
+
+if candidates:
+    lines.extend(f"- `{name}`" for name in candidates)
+else:
+    lines.append("_No candidates found._")
+
+lines.extend([
+    "",
+    "## Additional Icon/Sprite Code Identifiers",
+    "",
+    "These identifiers mention icons or sprites in code but are less likely to be direct lookup names.",
+    "",
+])
+
+if code_identifiers:
+    lines.extend(f"- `{name}`" for name in code_identifiers)
+else:
+    lines.append("_No additional identifiers found._")
+
+lines.append("")
+
+doc_path = repo_root / "docs" / "game-icons.md"
+doc_path.parent.mkdir(parents=True, exist_ok=True)
+doc_path.write_text("\n".join(lines), encoding="utf-8")
+print(f"Updated {doc_path.relative_to(repo_root)} with {len(candidates)} candidates and {len(code_identifiers)} additional identifiers.")
+PY

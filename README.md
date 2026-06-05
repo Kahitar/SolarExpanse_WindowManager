@@ -22,6 +22,7 @@ A unified UI framework and windowing system for *Solar Expanse*.
 *   **Zero Shell Boilerplate:** Register your window size, icon, and callbacks, and let SEWM handle the rest.
 *   **Standardized Layouts:** Focus entirely on your mod's core layout inside a pre-built, performance-optimized `ContentRoot` canvas.
 *   **Native Font Discovery:** Automatically inherits the game's TextMeshPro fonts for perfect aesthetic alignment.
+*   **Game Icon Lookup:** Prefer native game sprites through `GameIconNames`; see the generated [game icon candidate list](docs/game-icons.md).
 
 ---
 
@@ -93,6 +94,7 @@ internal static class MyModUi
             DisplayName = "My Mod Panel",
             Order = 50,
             Icon = MySpriteLoader.LoadIcon(),
+            GameIconNames = new[] { "resourceIcon", "spaceModuleIcon" },
             DefaultWindowSize = new Vector2(600f, 400f),
             BuildContent = context => {
                 // Instantiate your custom panels inside context.ContentRoot
@@ -102,6 +104,14 @@ internal static class MyModUi
         });
     }
 }
+```
+
+`Icon` remains the required fallback sprite. `GameIconNames` is optional and is resolved at runtime against loaded Unity sprites and TextMeshPro sprite assets before falling back to `Icon`.
+
+Update the generated icon reference after game updates:
+
+```bash
+mise run update-game-icons
 ```
 
 ---
