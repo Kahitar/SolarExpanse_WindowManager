@@ -321,7 +321,7 @@ namespace SolarExpanse.UIFramework
 
             if (registration.Icon == null)
             {
-                _log.LogError($"[SEUI] Rejecting UI window registration '{registration.Id}' with missing Icon");
+                _log.LogError($"[SEUI] Rejecting UI window registration '{registration.Id}' with missing Icon fallback");
                 valid = false;
             }
 
@@ -354,6 +354,7 @@ namespace SolarExpanse.UIFramework
                 DisplayName = registration.DisplayName,
                 Order = registration.Order,
                 Icon = registration.Icon,
+                GameIconNames = NormalizeGameIconNames(registration.GameIconNames),
                 IconTint = registration.IconTint,
                 DefaultWindowSize = defaultSize,
                 MinimumWindowSize = minimumSize,
@@ -362,6 +363,11 @@ namespace SolarExpanse.UIFramework
                 OnClose = registration.OnClose,
             };
         }
+
+        private static string[] NormalizeGameIconNames(IEnumerable<string> names)
+            => names == null
+                ? Array.Empty<string>()
+                : names.Where(name => !string.IsNullOrEmpty(name)).Distinct(StringComparer.OrdinalIgnoreCase).ToArray();
 
         private static void RebuildSortedHandles()
         {
@@ -878,6 +884,101 @@ namespace SolarExpanse.UIFramework
             return sprite;
         }
 
+        internal static Sprite ResolveRegistrationIcon(UiWindowRegistration registration)
+        {
+            foreach (string spriteName in registration.GameIconNames ?? Array.Empty<string>())
+            {
+                Sprite sprite = FindGameSprite(spriteName);
+                if (sprite != null)
+                    return sprite;
+
+                sprite = BuildSpriteFromTmpSpriteAsset(spriteName);
+                if (sprite != null)
+                    return sprite;
+            }
+
+            return registration.Icon;
+        }
+
+        private static Sprite FindGameSprite(string spriteName)
+            => Resources.FindObjectsOfTypeAll<Sprite>()
+                .FirstOrDefault(s => s != null && string.Equals(s.name, spriteName, StringComparison.OrdinalIgnoreCase));
+
+        private static Sprite BuildSpriteFromTmpSpriteAsset(string spriteName)
+        {
+            foreach (TMP_SpriteAsset asset in Resources.FindObjectsOfTypeAll<TMP_SpriteAsset>())
+            {
+                object character = FindTmpSpriteCharacter(asset, spriteName);
+                object glyph = ReadMemberValue(character, "glyph", "Glyph");
+                Texture2D texture = ReadMemberValue(asset, "spriteSheet", "SpriteSheet", "atlasTexture", "AtlasTexture") as Texture2D;
+                if (glyph == null || texture == null || !TryReadGlyphRect(glyph, out Rect rect))
+                    continue;
+
+                Sprite sprite = Sprite.Create(texture, rect, new Vector2(0.5f, 0.5f), Mathf.Max(rect.width, rect.height));
+                sprite.name = spriteName;
+                return sprite;
+            }
+
+            return null;
+        }
+
+        private static object FindTmpSpriteCharacter(TMP_SpriteAsset asset, string spriteName)
+        {
+            IEnumerable<TMP_SpriteCharacter> characters = asset?.spriteCharacterTable;
+            if (characters == null)
+                return null;
+
+            foreach (TMP_SpriteCharacter character in characters)
+            {
+                if (string.Equals(character?.name, spriteName, StringComparison.OrdinalIgnoreCase))
+                    return character;
+            }
+
+            return null;
+        }
+
+        private static bool TryReadGlyphRect(object glyph, out Rect rect)
+        {
+            rect = default;
+            object glyphRect = ReadMemberValue(glyph, "glyphRect", "GlyphRect");
+            if (glyphRect == null)
+                return false;
+
+            float x = ReadFloatMember(glyphRect, "x", "X");
+            float y = ReadFloatMember(glyphRect, "y", "Y");
+            float width = ReadFloatMember(glyphRect, "width", "Width");
+            float height = ReadFloatMember(glyphRect, "height", "Height");
+            if (width <= 0f || height <= 0f)
+                return false;
+
+            rect = new Rect(x, y, width, height);
+            return true;
+        }
+
+        private static object ReadMemberValue(object target, params string[] names)
+        {
+            if (target == null)
+                return null;
+
+            Type type = target.GetType();
+            const BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
+            foreach (string name in names)
+            {
+                PropertyInfo property = type.GetProperty(name, flags);
+                if (property != null)
+                    return property.GetValue(target, null);
+
+                FieldInfo field = type.GetField(name, flags);
+                if (field != null)
+                    return field.GetValue(target);
+            }
+
+            return null;
+        }
+
+        private static float ReadFloatMember(object target, params string[] names)
+            => Convert.ToSingle(ReadMemberValue(target, names), System.Globalization.CultureInfo.InvariantCulture);
+
         [HarmonyPatch(typeof(NotificationManager), "Awake")]
         private static class NotificationManagerAwakePatch
         {
@@ -892,6 +993,7 @@ namespace SolarExpanse.UIFramework
         public string DisplayName { get; set; }
         public int Order { get; set; }
         public Sprite Icon { get; set; }
+        public string[] GameIconNames { get; set; }
         public Color? IconTint { get; set; }
         public Vector2 DefaultWindowSize { get; set; }
         public Vector2 MinimumWindowSize { get; set; }
@@ -1175,7 +1277,7 @@ namespace SolarExpanse.UIFramework
             iconRT.sizeDelta = new Vector2(28f, 28f);
             iconRT.anchoredPosition = new Vector2(0f, 2f);
             Image icon = iconGO.AddComponent<Image>();
-            icon.sprite = _registration.Icon;
+            icon.sprite = SolarExpanseUi.ResolveRegistrationIcon(_registration);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             if (_registration.IconTint.HasValue)
