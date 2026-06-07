@@ -69,10 +69,6 @@
       <HintPath>$(SolarExpanseManagedDir)/Unity.TextMeshPro.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="Sirenix.Serialization">
-      <HintPath>$(SolarExpanseManagedDir)/Sirenix.Serialization.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
   </ItemGroup>
 
 </Project>

@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
 using BepInEx.Logging;
-using Game.UI.Windows.Elements;
 using HarmonyLib;
 using Manager;
 using TMPro;
@@ -359,7 +358,6 @@ namespace SolarExpanse.WindowManager
                 IconTint = registration.IconTint,
                 DefaultWindowSize = defaultSize,
                 MinimumWindowSize = minimumSize,
-                HoverText = string.IsNullOrEmpty(registration.HoverText) ? registration.DisplayName : registration.HoverText,
                 BuildContent = registration.BuildContent,
                 OnOpen = registration.OnOpen,
                 OnClose = registration.OnClose,
@@ -999,7 +997,6 @@ namespace SolarExpanse.WindowManager
         public Color? IconTint { get; set; }
         public Vector2 DefaultWindowSize { get; set; }
         public Vector2 MinimumWindowSize { get; set; }
-        public string HoverText { get; set; }
         public Action<UiWindowContext> BuildContent { get; set; }
         public Action<UiWindowContext> OnOpen { get; set; }
         public Action<UiWindowContext> OnClose { get; set; }
@@ -1068,7 +1065,6 @@ namespace SolarExpanse.WindowManager
         private GameObject _buttonObject;
         private Image _buttonImage;
         private UiStatusDotPresenter _dotPresenter;
-        private ShowToolTip _buttonTooltip;
         private TextMeshProUGUI _statusText;
         private RectTransform _buttonRect;
         private GameObject _windowObject;
@@ -1239,7 +1235,6 @@ namespace SolarExpanse.WindowManager
             _buttonObject = null;
             _buttonImage = null;
             _dotPresenter = null;
-            _buttonTooltip = null;
             _statusText = null;
             _buttonRect = null;
             _windowObject = null;
@@ -1272,8 +1267,6 @@ namespace SolarExpanse.WindowManager
 
             var input = _buttonObject.AddComponent<UiWindowButtonInput>();
             input.Handle = this;
-
-            ConfigureButtonTooltip();
 
             GameObject iconGO = new GameObject("Icon", typeof(RectTransform));
             iconGO.transform.SetParent(_buttonObject.transform, false);
@@ -1425,15 +1418,6 @@ namespace SolarExpanse.WindowManager
             }
 
             _windowObject.SetActive(false);
-        }
-
-        private void ConfigureButtonTooltip()
-        {
-            if (_buttonObject == null)
-                return;
-
-            _buttonTooltip = _buttonObject.AddComponent<ShowToolTip>();
-            _buttonTooltip.CustomTextFromCode = _registration.HoverText;
         }
 
         private void PlaceWindowBelowButton()
