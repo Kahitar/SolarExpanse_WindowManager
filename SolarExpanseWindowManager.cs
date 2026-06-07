@@ -537,7 +537,6 @@ namespace SolarExpanse.WindowManager
 
             return new ButtonVisualStyle
             {
-                SourceButton = sourceButton,
                 Sprite = image.sprite,
                 ActiveSprite = image.sprite,
                 Type = image.sprite != null ? image.type : Image.Type.Sliced,
@@ -1120,7 +1119,6 @@ namespace SolarExpanse.WindowManager
         private ButtonVisualStyle _buttonStyle;
         private GameObject _buttonObject;
         private Image _buttonImage;
-        private Button _buttonComponent;
         private UiStatusDotPresenter _dotPresenter;
         private ShowToolTip _buttonTooltip;
         private TextMeshProUGUI _statusText;
@@ -1304,8 +1302,10 @@ namespace SolarExpanse.WindowManager
 
         private void CreateButton(Transform parent, TMP_FontAsset font)
         {
-            CreateButtonRoot(parent);
+            _buttonObject = new GameObject($"SEWM_Button_{_safeId}", typeof(RectTransform));
+            _buttonObject.transform.SetParent(parent, false);
             _buttonRect = _buttonObject.GetComponent<RectTransform>();
+            _buttonRect.sizeDelta = new Vector2(SolarExpanseWindowManager.ButtonSize, SolarExpanseWindowManager.ButtonSize);
 
             var layout = _buttonObject.AddComponent<LayoutElement>();
             layout.preferredWidth = SolarExpanseWindowManager.ButtonSize;
@@ -1315,13 +1315,12 @@ namespace SolarExpanse.WindowManager
             layout.flexibleWidth = 0f;
             layout.flexibleHeight = 0f;
 
-            _buttonImage = _buttonObject.GetComponent<Image>() ?? _buttonObject.AddComponent<Image>();
+            _buttonImage = _buttonObject.AddComponent<Image>();
             _buttonImage.sprite = _buttonStyle.Sprite;
             _buttonImage.type = _buttonStyle.Sprite != null ? _buttonStyle.Type : Image.Type.Simple;
             _buttonImage.material = _buttonStyle.Material;
             _buttonImage.color = _buttonStyle.NormalColor;
             _buttonImage.raycastTarget = true;
-            ConfigureNativeButtonComponent();
 
             var input = _buttonObject.AddComponent<UiWindowButtonInput>();
             input.Handle = this;
@@ -1383,58 +1382,6 @@ namespace SolarExpanse.WindowManager
             _statusText.raycastTarget = false;
 
             UpdateButtonActiveState();
-        }
-
-        private void CreateButtonRoot(Transform parent)
-        {
-            if (_buttonStyle.SourceButton != null)
-            {
-                _buttonObject = UnityEngine.Object.Instantiate(_buttonStyle.SourceButton.gameObject, parent, false);
-                _buttonObject.name = $"SEWM_Button_{_safeId}";
-
-                for (int i = _buttonObject.transform.childCount - 1; i >= 0; i--)
-                    UnityEngine.Object.DestroyImmediate(_buttonObject.transform.GetChild(i).gameObject);
-
-                foreach (Component component in _buttonObject.GetComponents<Component>())
-                {
-                    if (component is RectTransform || component is CanvasRenderer ||
-                        component is Image || component is Button)
-                        continue;
-                    UnityEngine.Object.DestroyImmediate(component);
-                }
-            }
-            else
-            {
-                _buttonObject = new GameObject($"SEWM_Button_{_safeId}", typeof(RectTransform));
-                _buttonObject.transform.SetParent(parent, false);
-            }
-
-            RectTransform rect = _buttonObject.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(SolarExpanseWindowManager.ButtonSize, SolarExpanseWindowManager.ButtonSize);
-        }
-
-        private void ConfigureNativeButtonComponent()
-        {
-            Button clonedButton = _buttonObject.GetComponent<Button>();
-            if (clonedButton == null)
-                return;
-
-            Selectable.Transition transition = clonedButton.transition;
-            ColorBlock colors = clonedButton.colors;
-            SpriteState spriteState = clonedButton.spriteState;
-            AnimationTriggers animationTriggers = clonedButton.animationTriggers;
-            bool interactable = clonedButton.interactable;
-
-            UnityEngine.Object.DestroyImmediate(clonedButton);
-
-            _buttonComponent = _buttonObject.AddComponent<Button>();
-            _buttonComponent.transition = transition;
-            _buttonComponent.colors = colors;
-            _buttonComponent.spriteState = spriteState;
-            _buttonComponent.animationTriggers = animationTriggers;
-            _buttonComponent.interactable = interactable;
-            _buttonComponent.targetGraphic = _buttonImage;
-            _buttonComponent.navigation = new Navigation { mode = Navigation.Mode.None };
         }
 
         private void CreateWindow(Canvas canvas, GameObject historyTemplate, TMP_FontAsset font)
@@ -1588,19 +1535,8 @@ namespace SolarExpanse.WindowManager
             if (_buttonImage == null)
                 return;
 
-            if (_buttonComponent != null && !IsOpen)
-            {
-                _buttonComponent.enabled = true;
-                _buttonImage.sprite = _buttonStyle.Sprite;
-                _buttonImage.color = _buttonStyle.NormalColor;
-                return;
-            }
-
             if (IsOpen)
             {
-                if (_buttonComponent != null)
-                    _buttonComponent.enabled = false;
-
                 _buttonImage.sprite = _buttonStyle.ActiveSprite ?? _buttonStyle.Sprite;
                 _buttonImage.color = _buttonStyle.ActiveColor;
             }
@@ -1615,9 +1551,6 @@ namespace SolarExpanse.WindowManager
 
         internal void SetPointerState(bool hovered, bool pressed)
         {
-            if (_buttonComponent != null)
-                return;
-
             _hovered = hovered;
             _pressed = pressed;
             UpdateButtonActiveState();
@@ -1701,7 +1634,6 @@ namespace SolarExpanse.WindowManager
 
     internal sealed class ButtonVisualStyle
     {
-        public Button SourceButton;
         public Sprite Sprite;
         public Sprite ActiveSprite;
         public Sprite GroupSprite;
