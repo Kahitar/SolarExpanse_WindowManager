@@ -66,8 +66,6 @@ namespace SolarExpanse.WindowManager
         private static Vector2 _buttonGroupEdgeOffsets;
         private static bool _buttonGroupPlacementNeedsRestore;
         private static bool _recoveringButtonGroupPosition;
-        private static Sprite _generatedButtonSprite;
-        private static Sprite _generatedActiveButtonSprite;
         private static Sprite _generatedGroupFrameSprite;
         private static int _focusCounter;
 
@@ -507,76 +505,27 @@ namespace SolarExpanse.WindowManager
             Image image = sourceButton != null ? sourceButton.GetComponent<Image>() : null;
             bool copyGameStyle = image != null && IsDarkButtonImage(image);
 
-            if (!copyGameStyle)
-            {
-                return new ButtonVisualStyle
-                {
-                    Sprite = GeneratedButtonSprite,
-                    ActiveSprite = GeneratedActiveButtonSprite,
-                    Type = Image.Type.Sliced,
-                    Material = null,
-                    NormalColor = Color.white,
-                    HoverColor = new Color(1.18f, 1.18f, 1.18f, 1f),
-                    PressedColor = new Color(0.72f, 0.78f, 0.86f, 1f),
-                    ActiveColor = Color.white,
-                    GroupSprite = GeneratedGroupFrameSprite,
-                };
-            }
-
-            Color normal = EnsureUsableDarkColor(image.color);
-            Color hover = new Color(
-                Mathf.Min(1f, normal.r * 1.2f + 0.03f),
-                Mathf.Min(1f, normal.g * 1.2f + 0.03f),
-                Mathf.Min(1f, normal.b * 1.2f + 0.03f),
-                normal.a);
-            Color pressed = new Color(normal.r * 0.72f, normal.g * 0.72f, normal.b * 0.72f, normal.a);
-
             return new ButtonVisualStyle
             {
-                Sprite = image.sprite,
-                ActiveSprite = image.sprite,
-                Type = image.sprite != null ? image.type : Image.Type.Sliced,
-                Material = image.material,
-                NormalColor = normal,
-                HoverColor = hover,
-                PressedColor = pressed,
-                ActiveColor = new Color(0.10f, 0.30f, 0.50f, 1f),
+                SourceButton = copyGameStyle ? sourceButton : null,
                 GroupSprite = GeneratedGroupFrameSprite,
             };
         }
 
         private static Button FindDarkButtonStyleSource(Canvas canvas, Button notificationButton)
         {
-            Button best = null;
-            float bestScore = float.NegativeInfinity;
+            Image notificationImage = notificationButton != null ? notificationButton.GetComponent<Image>() : null;
+            if (IsDarkButtonImage(notificationImage))
+                return notificationButton;
+
             foreach (Button button in canvas.GetComponentsInChildren<Button>(includeInactive: true))
             {
                 Image img = button != null ? button.GetComponent<Image>() : null;
-                if (img == null || !IsDarkButtonImage(img))
-                    continue;
-
-                RectTransform rt = button.GetComponent<RectTransform>();
-                float sizeScore = 0f;
-                if (rt != null)
-                {
-                    Vector2 size = rt.rect.size;
-                    if (size.x >= 24f && size.x <= 96f && size.y >= 24f && size.y <= 96f)
-                        sizeScore = 1f;
-                }
-
-                float brightness = Brightness(img.color);
-                float score = (1f - brightness) * 3f + sizeScore + (img.sprite != null ? 1f : 0f);
-                if (button == notificationButton || button.name.IndexOf("notification", StringComparison.OrdinalIgnoreCase) >= 0)
-                    score -= 2f;
-
-                if (score > bestScore)
-                {
-                    bestScore = score;
-                    best = button;
-                }
+                if (IsDarkButtonImage(img))
+                    return button;
             }
 
-            return best;
+            return null;
         }
 
         private static TMP_FontAsset FindFontAsset(NotificationManager nm, GameObject historyGO)
@@ -818,34 +767,6 @@ namespace SolarExpanse.WindowManager
         private static float Brightness(Color color) =>
             color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
 
-        private static Sprite GeneratedButtonSprite
-        {
-            get
-            {
-                if (_generatedButtonSprite == null)
-                    _generatedButtonSprite = BuildBeveledSprite("SEWM_Button_Normal",
-                        new Color(0.055f, 0.065f, 0.075f, 0.98f),
-                        new Color(0.42f, 0.47f, 0.50f, 1f),
-                        new Color(0.010f, 0.014f, 0.018f, 1f),
-                        new Color(0.14f, 0.16f, 0.18f, 1f));
-                return _generatedButtonSprite;
-            }
-        }
-
-        private static Sprite GeneratedActiveButtonSprite
-        {
-            get
-            {
-                if (_generatedActiveButtonSprite == null)
-                    _generatedActiveButtonSprite = BuildBeveledSprite("SEWM_Button_Active",
-                        new Color(0.045f, 0.075f, 0.11f, 0.98f),
-                        new Color(0.44f, 0.61f, 0.72f, 1f),
-                        new Color(0.01f, 0.03f, 0.05f, 1f),
-                        new Color(0.05f, 0.30f, 0.58f, 1f));
-                return _generatedActiveButtonSprite;
-            }
-        }
-
         private static Sprite GeneratedGroupFrameSprite
         {
             get
@@ -1073,6 +994,7 @@ namespace SolarExpanse.WindowManager
         private ButtonVisualStyle _buttonStyle;
         private GameObject _buttonObject;
         private Image _buttonImage;
+        private Button _nativeButton;
         private UiStatusDotPresenter _dotPresenter;
         private ShowToolTip _buttonTooltip;
         private TextMeshProUGUI _statusText;
@@ -1083,8 +1005,6 @@ namespace SolarExpanse.WindowManager
         private UiWindowContext _context;
         private UiButtonStatus _status;
         private bool _requestedOpen;
-        private bool _hovered;
-        private bool _pressed;
 
         internal UiWindowHandleImpl(UiWindowRegistration registration)
         {
@@ -1244,6 +1164,7 @@ namespace SolarExpanse.WindowManager
 
             _buttonObject = null;
             _buttonImage = null;
+            _nativeButton = null;
             _dotPresenter = null;
             _buttonTooltip = null;
             _statusText = null;
@@ -1256,10 +1177,8 @@ namespace SolarExpanse.WindowManager
 
         private void CreateButton(Transform parent, TMP_FontAsset font)
         {
-            _buttonObject = new GameObject($"SEWM_Button_{_safeId}", typeof(RectTransform));
-            _buttonObject.transform.SetParent(parent, false);
+            CreateNativeButtonRoot(parent);
             _buttonRect = _buttonObject.GetComponent<RectTransform>();
-            _buttonRect.sizeDelta = new Vector2(SolarExpanseWindowManager.ButtonSize, SolarExpanseWindowManager.ButtonSize);
 
             var layout = _buttonObject.AddComponent<LayoutElement>();
             layout.preferredWidth = SolarExpanseWindowManager.ButtonSize;
@@ -1269,15 +1188,10 @@ namespace SolarExpanse.WindowManager
             layout.flexibleWidth = 0f;
             layout.flexibleHeight = 0f;
 
-            _buttonImage = _buttonObject.AddComponent<Image>();
-            _buttonImage.sprite = _buttonStyle.Sprite;
-            _buttonImage.type = _buttonStyle.Sprite != null ? _buttonStyle.Type : Image.Type.Simple;
-            _buttonImage.material = _buttonStyle.Material;
-            _buttonImage.color = _buttonStyle.NormalColor;
+            _buttonImage = _buttonObject.GetComponent<Image>();
             _buttonImage.raycastTarget = true;
 
-            var input = _buttonObject.AddComponent<UiWindowButtonInput>();
-            input.Handle = this;
+            _buttonObject.AddComponent<UiWindowButtonInput>().Handle = this;
 
             ConfigureButtonTooltip();
 
@@ -1336,6 +1250,34 @@ namespace SolarExpanse.WindowManager
             _statusText.raycastTarget = false;
 
             UpdateButtonActiveState();
+        }
+
+        private void CreateNativeButtonRoot(Transform parent)
+        {
+            if (_buttonStyle.SourceButton == null)
+                throw new InvalidOperationException("SEWM requires a native game button source; no fallback button style is generated.");
+
+            _buttonObject = UnityEngine.Object.Instantiate(_buttonStyle.SourceButton.gameObject, parent, false);
+            _buttonObject.name = $"SEWM_Button_{_safeId}";
+
+            for (int i = _buttonObject.transform.childCount - 1; i >= 0; i--)
+                UnityEngine.Object.DestroyImmediate(_buttonObject.transform.GetChild(i).gameObject);
+
+            foreach (Component component in _buttonObject.GetComponents<Component>())
+            {
+                if (component is RectTransform || component is CanvasRenderer ||
+                    component is Image || component is Button)
+                    continue;
+                UnityEngine.Object.DestroyImmediate(component);
+            }
+
+            _buttonRect = _buttonObject.GetComponent<RectTransform>();
+            _buttonRect.sizeDelta = new Vector2(SolarExpanseWindowManager.ButtonSize, SolarExpanseWindowManager.ButtonSize);
+            _buttonImage = _buttonObject.GetComponent<Image>();
+            _nativeButton = _buttonObject.GetComponent<Button>();
+            _nativeButton.targetGraphic = _buttonImage;
+            _nativeButton.onClick = new Button.ButtonClickedEvent();
+            _nativeButton.navigation = new Navigation { mode = Navigation.Mode.None };
         }
 
         private void CreateWindow(Canvas canvas, GameObject historyTemplate, TMP_FontAsset font)
@@ -1486,28 +1428,10 @@ namespace SolarExpanse.WindowManager
 
         private void UpdateButtonActiveState()
         {
-            if (_buttonImage == null)
-                return;
-
-            if (IsOpen)
-            {
-                _buttonImage.sprite = _buttonStyle.ActiveSprite ?? _buttonStyle.Sprite;
-                _buttonImage.color = _buttonStyle.ActiveColor;
-            }
-            else
-            {
-                _buttonImage.sprite = _buttonStyle.Sprite;
-                _buttonImage.color = _pressed
-                    ? _buttonStyle.PressedColor
-                    : _hovered ? _buttonStyle.HoverColor : _buttonStyle.NormalColor;
-            }
         }
 
         internal void SetPointerState(bool hovered, bool pressed)
         {
-            _hovered = hovered;
-            _pressed = pressed;
-            UpdateButtonActiveState();
         }
 
         private static UiButtonStatus NormalizeStatus(UiButtonStatus status)
@@ -1588,15 +1512,8 @@ namespace SolarExpanse.WindowManager
 
     internal sealed class ButtonVisualStyle
     {
-        public Sprite Sprite;
-        public Sprite ActiveSprite;
+        public Button SourceButton;
         public Sprite GroupSprite;
-        public Image.Type Type;
-        public Material Material;
-        public Color NormalColor;
-        public Color HoverColor;
-        public Color PressedColor;
-        public Color ActiveColor;
     }
 
     internal sealed class UiWindowFocusHandler : MonoBehaviour, IPointerDownHandler

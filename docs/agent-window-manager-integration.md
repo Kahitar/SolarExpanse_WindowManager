@@ -20,7 +20,7 @@ The window manager owns the shared notification-area button group and window she
 - Open Window Manager windows move with the button group while the user drags it.
 - The button group automatically remains visible and draggable across live game-window and canvas resizing.
 - One compact button per registered mod window.
-- Game-styled dark beveled button visuals with active state.
+- Buttons cloned from the game's native notification-side button; the framework does not generate a replacement button style.
 - Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
 - Game-native hover labels for Window Manager buttons, defaulting to `DisplayName`.
 - Optional game icon lookup by name before falling back to a generated or mod-provided sprite.
