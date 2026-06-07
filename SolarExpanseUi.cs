@@ -510,20 +510,24 @@ namespace SolarExpanse.UIFramework
                     Type = Image.Type.Sliced,
                     Material = null,
                     NormalColor = Color.white,
-                    HoverColor = new Color(1.18f, 1.18f, 1.18f, 1f),
-                    PressedColor = new Color(0.72f, 0.78f, 0.86f, 1f),
+                    HoverColor = new Color(1.12f, 1.12f, 1.12f, 1f),
+                    PressedColor = new Color(0.78f, 0.82f, 0.88f, 1f),
                     ActiveColor = Color.white,
                     GroupSprite = GeneratedGroupFrameSprite,
                 };
             }
 
             Color normal = EnsureUsableDarkColor(image.color);
-            Color hover = new Color(
+            Color hover = EnsureUsableButtonStateColor(sourceButton.colors.highlightedColor,
+                new Color(
                 Mathf.Min(1f, normal.r * 1.2f + 0.03f),
                 Mathf.Min(1f, normal.g * 1.2f + 0.03f),
                 Mathf.Min(1f, normal.b * 1.2f + 0.03f),
-                normal.a);
-            Color pressed = new Color(normal.r * 0.72f, normal.g * 0.72f, normal.b * 0.72f, normal.a);
+                normal.a));
+            Color pressed = EnsureUsableButtonStateColor(sourceButton.colors.pressedColor,
+                new Color(normal.r * 0.72f, normal.g * 0.72f, normal.b * 0.72f, normal.a));
+            Color active = EnsureUsableButtonStateColor(sourceButton.colors.selectedColor,
+                new Color(0.10f, 0.30f, 0.50f, 1f));
 
             return new ButtonVisualStyle
             {
@@ -534,13 +538,17 @@ namespace SolarExpanse.UIFramework
                 NormalColor = normal,
                 HoverColor = hover,
                 PressedColor = pressed,
-                ActiveColor = new Color(0.10f, 0.30f, 0.50f, 1f),
+                ActiveColor = active,
                 GroupSprite = GeneratedGroupFrameSprite,
             };
         }
 
         private static Button FindDarkButtonStyleSource(Canvas canvas, Button notificationButton)
         {
+            Image notificationImage = notificationButton != null ? notificationButton.GetComponent<Image>() : null;
+            if (IsDarkButtonImage(notificationImage))
+                return notificationButton;
+
             Button best = null;
             float bestScore = float.NegativeInfinity;
             foreach (Button button in canvas.GetComponentsInChildren<Button>(includeInactive: true))
@@ -560,8 +568,6 @@ namespace SolarExpanse.UIFramework
 
                 float brightness = Brightness(img.color);
                 float score = (1f - brightness) * 3f + sizeScore + (img.sprite != null ? 1f : 0f);
-                if (button == notificationButton || button.name.IndexOf("notification", StringComparison.OrdinalIgnoreCase) >= 0)
-                    score -= 2f;
 
                 if (score > bestScore)
                 {
@@ -809,6 +815,17 @@ namespace SolarExpanse.UIFramework
             return color;
         }
 
+        private static Color EnsureUsableButtonStateColor(Color color, Color fallback)
+        {
+            if (color.a < 0.25f)
+                return fallback;
+            if (color.r > 1.5f || color.g > 1.5f || color.b > 1.5f)
+                return fallback;
+            if (Brightness(color) < 0.02f && Brightness(fallback) > 0.02f)
+                return fallback;
+            return color;
+        }
+
         private static float Brightness(Color color) =>
             color.r * 0.2126f + color.g * 0.7152f + color.b * 0.0722f;
 
@@ -819,9 +836,9 @@ namespace SolarExpanse.UIFramework
                 if (_generatedButtonSprite == null)
                     _generatedButtonSprite = BuildBeveledSprite("SEUI_Button_Normal",
                         new Color(0.055f, 0.065f, 0.075f, 0.98f),
-                        new Color(0.42f, 0.47f, 0.50f, 1f),
+                        new Color(0.24f, 0.28f, 0.31f, 1f),
                         new Color(0.010f, 0.014f, 0.018f, 1f),
-                        new Color(0.14f, 0.16f, 0.18f, 1f));
+                        new Color(0.30f, 0.34f, 0.37f, 1f));
                 return _generatedButtonSprite;
             }
         }
@@ -833,9 +850,9 @@ namespace SolarExpanse.UIFramework
                 if (_generatedActiveButtonSprite == null)
                     _generatedActiveButtonSprite = BuildBeveledSprite("SEUI_Button_Active",
                         new Color(0.045f, 0.075f, 0.11f, 0.98f),
-                        new Color(0.44f, 0.61f, 0.72f, 1f),
+                        new Color(0.22f, 0.37f, 0.48f, 1f),
                         new Color(0.01f, 0.03f, 0.05f, 1f),
-                        new Color(0.05f, 0.30f, 0.58f, 1f));
+                        new Color(0.18f, 0.47f, 0.74f, 1f));
                 return _generatedActiveButtonSprite;
             }
         }
@@ -861,17 +878,46 @@ namespace SolarExpanse.UIFramework
             Texture2D tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
             tex.hideFlags = HideFlags.HideAndDontSave;
             Color[] pixels = new Color[size * size];
+            const float radius = 7.5f;
+            const float border = 2.0f;
+
             for (int y = 0; y < size; y++)
             {
                 for (int x = 0; x < size; x++)
                 {
+                    pixels[y * size + x] = Color.clear;
+
+                    float px = x + 0.5f;
+                    float py = y + 0.5f;
+                    float dx = px < radius ? radius - px : px > size - radius ? px - (size - radius) : 0f;
+                    float dy = py < radius ? radius - py : py > size - radius ? py - (size - radius) : 0f;
+                    float distance = Mathf.Sqrt(dx * dx + dy * dy);
+                    float alpha = Mathf.Clamp01(radius - distance);
+                    if (alpha <= 0f)
+                        continue;
+
                     Color c = fill;
-                    bool edge = x == 0 || y == 0 || x == size - 1 || y == size - 1;
-                    bool innerEdge = x == 1 || y == 1 || x == size - 2 || y == size - 2;
-                    if (edge)
-                        c = x == size - 1 || y == 0 ? bottomRight : topLeft;
-                    else if (innerEdge)
-                        c = inner;
+                    float edgeDistance = Mathf.Min(Mathf.Min(px, size - px), Mathf.Min(py, size - py));
+                    bool roundedBorder = distance > radius - border;
+                    bool straightBorder = edgeDistance < border;
+                    bool bottomHighlight = py <= 5.5f && !roundedBorder;
+
+                    if (roundedBorder || straightBorder)
+                    {
+                        bool lowerOrRight = py < border || px > size - border;
+                        c = lowerOrRight ? bottomRight : topLeft;
+                    }
+                    else if (bottomHighlight)
+                    {
+                        float t = Mathf.InverseLerp(5.5f, 1.5f, py);
+                        c = Color.Lerp(inner, fill, t * 0.25f);
+                    }
+                    else if (py > size - 4f)
+                    {
+                        c = Color.Lerp(topLeft, fill, 0.45f);
+                    }
+
+                    c.a *= alpha;
                     pixels[y * size + x] = c;
                 }
             }
@@ -881,7 +927,7 @@ namespace SolarExpanse.UIFramework
             tex.name = name;
             Sprite sprite = Sprite.Create(tex, new Rect(0, 0, size, size),
                 new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
-                new Vector4(3f, 3f, 3f, 3f));
+                new Vector4(8f, 8f, 8f, 8f));
             sprite.name = name;
             return sprite;
         }

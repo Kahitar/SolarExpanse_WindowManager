@@ -20,7 +20,7 @@ The framework owns the shared notification-area button group and window shell. D
 - Open framework windows move with the button group while the user drags it.
 - The button group automatically remains visible and draggable across live game-window and canvas resizing.
 - One compact button per registered mod window.
-- Game-styled dark beveled button visuals with active state.
+- Game-styled rounded, dark beveled button visuals with a subtle bottom highlight and active state.
 - Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
 - Game-native hover labels for framework buttons, defaulting to `DisplayName`.
 - Optional game icon lookup by name before falling back to a generated or mod-provided sprite.
