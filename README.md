@@ -11,7 +11,7 @@ A unified window manager and windowing system for *Solar Expanse*.
 ## Features
 
 ### For Players
-*   **Unified Button Dock:** Consolidates all mod shortcuts into compact buttons cloned from the game's native notification-side button.
+*   **Unified Button Dock:** Consolidates all mod shortcuts into a compact button group right next to the game's notifications.
 *   **Fully Clean & Draggable:** Drag and reposition the button dock anywhere on your screen. Open mod windows follow the dock while it moves, your layout remains saved, and the dock automatically stays reachable when the game window is resized.
 *   **Consistent Window Shells:** Every mod window uses the same dark, beveled, native-looking frames with resize handles.
 *   **Smart ESC Key Behavior:** Pressing `ESC` closes the topmost mod window first rather than immediately opening the game's pause menu.
