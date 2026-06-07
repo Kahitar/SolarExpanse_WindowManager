@@ -25,7 +25,7 @@ If a framework change would require dependent mods to change code, add an entry 
 
 ## Implementation Notes
 
-- Keep public API changes conservative. Existing dependent mods may compile against `UiWindowRegistration`, `UiWindowContext`, `IUiWindowHandle`, and `UiButtonStatus`.
+- Keep public API changes conservative. Existing dependent mods may compile against `UiWindowRegistration`, `UiWindowContext`, `IUiWindowHandle`, and `UiButtonStatus`. If a change would require an API change, or the API change would make the API much cleaner, ask the user for confirmation before making the change.
 - Do not duplicate per-mod button creation, draggable button groups, resizers, or pause-screen ESC suppression in dependent mods. Those behaviors belong here.
 - Preserve the game-native visual direction: dark beveled notification-side buttons, compact icons, dark translucent window backgrounds, and subdued status text.
 - Prefer generated sprites or game-discovered sprites over external image assets unless a release explicitly packages those assets.
