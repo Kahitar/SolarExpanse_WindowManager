@@ -17,6 +17,7 @@ A unified UI framework and windowing system for *Solar Expanse*.
 *   **Smart ESC Key Behavior:** Pressing `ESC` closes the topmost mod window first rather than immediately opening the game's pause menu.
 *   **Focused Window Ordering:** Click any window to bring it to the front. Windows automatically clamp to your screen when changing resolution.
 *   **Rich Status Indicators:** Mod buttons can display active states, anti-aliased notification dots, warning blinks, and status text.
+*   **Native Hover Labels:** Mod buttons use the game's own hover-label tooltip behavior.
 
 ### For Developers / Modders
 *   **Zero Shell Boilerplate:** Register your window size, icon, and callbacks, and let SEWM handle the rest.
@@ -97,6 +98,7 @@ internal static class MyModUi
             GameIconNames = new[] { "resourceIcon", "spaceModuleIcon" },
             DefaultWindowSize = new Vector2(600f, 400f),
             BuildContent = context => {
+                // Optional: set HoverText to override the button label; DisplayName is used by default.
                 // Instantiate your custom panels inside context.ContentRoot
                 GameObject panel = new GameObject("MyContent");
                 panel.transform.SetParent(context.ContentRoot, false);

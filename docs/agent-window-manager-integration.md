@@ -22,6 +22,7 @@ The framework owns the shared notification-area button group and window shell. D
 - One compact button per registered mod window.
 - Game-styled dark beveled button visuals with active state.
 - Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
+- Game-native hover labels for framework buttons, defaulting to `DisplayName`.
 - Optional game icon lookup by name before falling back to a generated or mod-provided sprite.
 - Game-styled window shell cloned from the notification history panel.
 - Resizable windows with minimum size enforcement.
@@ -91,6 +92,7 @@ internal static class ExampleUi
             DefaultWindowSize = new Vector2(720f, 300f),
             MinimumWindowSize = new Vector2(500f, 180f),
             BuildContent = context => BuildContent(context, log),
+            HoverText = "Example", // Optional; defaults to DisplayName.
             OnOpen = context => Refresh(context),
             OnClose = context => { },
         });
@@ -108,6 +110,7 @@ Registration requirements:
 - `Order` controls button ordering. Lower numbers appear earlier in the shared button group.
 - `DefaultWindowSize` defaults to `720x300` if missing or invalid.
 - `MinimumWindowSize` defaults to `500x180` if missing or invalid.
+- `HoverText` is optional. It controls the game-native button hover label and defaults to `DisplayName`.
 
 The framework accepts registrations before `NotificationManager.Awake`; it stores them and realizes them later.
 
@@ -263,6 +266,7 @@ public sealed class UiWindowRegistration
     public Color? IconTint { get; set; }
     public Vector2 DefaultWindowSize { get; set; }
     public Vector2 MinimumWindowSize { get; set; }
+    public string HoverText { get; set; }
     public Action<UiWindowContext> BuildContent { get; set; }
     public Action<UiWindowContext> OnOpen { get; set; }
     public Action<UiWindowContext> OnClose { get; set; }
@@ -320,6 +324,8 @@ public struct UiButtonStatus
 }
 ```
 
+Button hover labels use `UiWindowRegistration.HoverText`, or `DisplayName` when `HoverText` is omitted.
+
 ## Build and Test Commands
 
 From the framework directory:
@@ -349,6 +355,14 @@ Some dependent mods may still use Harmony or `NotificationManager` for unrelated
 ## Agent Compatibility Changelog
 
 This changelog is for agents updating dependent mods to newer framework versions. Add entries here whenever a framework release changes integration behavior or requires dependent mod changes.
+
+### Unreleased
+
+Framework buttons now attach the game's `ShowToolTip` hover label component. `UiWindowRegistration.HoverText` can override the label; existing registrations continue to use `DisplayName` automatically.
+
+Dependent mod action:
+
+- No dependent-mod code changes are required unless a custom hover label is desired.
 
 ### 1.4.0
 
