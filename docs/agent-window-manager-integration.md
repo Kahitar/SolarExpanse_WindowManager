@@ -21,6 +21,7 @@ The window manager owns the shared notification-area button group and window she
 - The button group automatically remains visible and draggable across live game-window and canvas resizing.
 - One compact button per registered mod window.
 - Game-styled dark beveled button visuals with active state.
+- Game-native button hover labels using each registration's `DisplayName`.
 - Optional anti-aliased TextMeshPro status dot, blinking critical state, and small status text.
 - Optional game icon lookup by name before falling back to a generated or mod-provided sprite.
 - Game-styled window shell cloned from the notification history panel.
@@ -101,7 +102,7 @@ internal static class ExampleUi
 Registration requirements:
 
 - `Id` must be unique across all window-manager-based mods.
-- `DisplayName` is required and is used for window manager context and diagnostics.
+- `DisplayName` is required and is used for window manager context, diagnostics, and the button's native hover label.
 - `Icon` is required as a fallback. Use a compact sprite that remains readable at about `28x28`.
 - `GameIconNames` is optional. The window manager tries these names against loaded game sprites and TextMeshPro sprite assets before falling back to `Icon`; see `docs/game-icons.md`.
 - `BuildContent` is required. It is called once when the game UI is realized.
@@ -349,6 +350,16 @@ Some dependent mods may still use Harmony or `NotificationManager` for unrelated
 ## Agent Compatibility Changelog
 
 This changelog is for agents updating dependent mods to newer window manager versions. Add entries here whenever a window manager release changes integration behavior or requires dependent mod changes.
+
+### Unreleased
+
+Window Manager buttons now use Solar Expanse's native tooltip component to show
+their registered `DisplayName` on hover. Tooltip timing and presentation are
+copied from an existing game button when available.
+
+Dependent mod action:
+
+- No dependent-mod code changes are required.
 
 ### 1.4.0
 

@@ -31,6 +31,26 @@ namespace SolarExpanse.WindowManager
         private static readonly FieldInfo FieldNotificationPrefab =
             typeof(NotificationManager).GetField("notificationUIPrefab",
                 BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly Type TypeShowToolTip =
+            typeof(NotificationManager).Assembly.GetType("ShowToolTip");
+        private static readonly Type TypeToolTipWindow =
+            typeof(NotificationManager).Assembly.GetType("ToolTipWindow");
+        private static readonly PropertyInfo PropertyTooltipCustomText =
+            TypeShowToolTip?.GetProperty("CustomTextFromCode",
+                BindingFlags.Instance | BindingFlags.Public);
+        private static readonly FieldInfo FieldTooltipShowCustomFromCode =
+            TypeShowToolTip?.GetField("showCustomFromCode",
+                BindingFlags.Instance | BindingFlags.NonPublic);
+        private static readonly string[] TooltipTemplateFieldNames =
+        {
+            "afterTime",
+            "toUpper",
+            "advance",
+            "lineSpacing",
+            "alignment",
+            "maxTextWidth",
+            "tooltipAnchor",
+        };
 
         private static readonly Dictionary<string, UiWindowHandleImpl> Handles =
             new Dictionary<string, UiWindowHandleImpl>();
@@ -43,6 +63,7 @@ namespace SolarExpanse.WindowManager
         private static Button _showNotificationButton;
         private static RectTransform _showNotificationButtonRect;
         private static GameObject _notificationHistoryTemplate;
+        private static Component _nativeTooltipWindow;
         private static Canvas _canvas;
         private static RectTransform _canvasRect;
         private static TMP_FontAsset _font;
@@ -270,6 +291,44 @@ namespace SolarExpanse.WindowManager
             }
 
             ClampButtonGroupToVisibleCanvas();
+            KeepNativeTooltipOnTop();
+        }
+
+        private static void KeepNativeTooltipOnTop()
+        {
+            if (TypeToolTipWindow == null)
+                return;
+
+            if (_nativeTooltipWindow == null)
+            {
+                foreach (UnityEngine.Object obj in Resources.FindObjectsOfTypeAll(TypeToolTipWindow))
+                {
+                    Component candidate = obj as Component;
+                    if (candidate == null)
+                        continue;
+
+                    if (_nativeTooltipWindow == null)
+                        _nativeTooltipWindow = candidate;
+                    if (candidate.GetComponentInParent<Canvas>() == _canvas)
+                    {
+                        _nativeTooltipWindow = candidate;
+                        break;
+                    }
+                }
+            }
+
+            if (_nativeTooltipWindow == null || !_nativeTooltipWindow.gameObject.activeInHierarchy)
+                return;
+
+            Canvas tooltipCanvas = _nativeTooltipWindow.GetComponentInParent<Canvas>();
+            Transform renderRoot = _nativeTooltipWindow.transform;
+            if (tooltipCanvas != null)
+            {
+                while (renderRoot.parent != null && renderRoot.parent != tooltipCanvas.transform)
+                    renderRoot = renderRoot.parent;
+            }
+
+            renderRoot.SetAsLastSibling();
         }
 
         internal static Vector2 CanvasLocalPointFromWorld(Vector3 worldPoint)
@@ -292,6 +351,66 @@ namespace SolarExpanse.WindowManager
             _canvasRect != null &&
             _showNotificationButtonRect != null &&
             _notificationHistoryTemplate != null;
+
+        internal static Component FindNativeTooltipTemplate()
+        {
+            if (TypeShowToolTip == null)
+                return null;
+
+            Component tooltip = _showNotificationButton?.GetComponent(TypeShowToolTip);
+            if (tooltip != null)
+                return tooltip;
+
+            tooltip = _showNotificationButton?.GetComponentInChildren(TypeShowToolTip, includeInactive: true);
+            if (tooltip != null)
+                return tooltip;
+
+            if (_canvas == null)
+                return null;
+
+            Component fallback = null;
+            foreach (Component candidate in _canvas.GetComponentsInChildren(TypeShowToolTip, includeInactive: true))
+            {
+                if (candidate == null ||
+                    candidate.gameObject.name.StartsWith("SEWM_", StringComparison.Ordinal))
+                {
+                    continue;
+                }
+
+                if (fallback == null)
+                    fallback = candidate;
+                if (candidate.GetComponentInParent<Button>() != null)
+                    return candidate;
+            }
+
+            return fallback;
+        }
+
+        internal static Component AddNativeTooltip(GameObject target, string text)
+        {
+            if (target == null || TypeShowToolTip == null ||
+                PropertyTooltipCustomText == null || FieldTooltipShowCustomFromCode == null)
+            {
+                return null;
+            }
+
+            Component tooltip = target.AddComponent(TypeShowToolTip);
+            Component template = FindNativeTooltipTemplate();
+            if (template != null)
+            {
+                foreach (string fieldName in TooltipTemplateFieldNames)
+                {
+                    FieldInfo field = TypeShowToolTip.GetField(fieldName,
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (field != null)
+                        field.SetValue(tooltip, field.GetValue(template));
+                }
+            }
+
+            PropertyTooltipCustomText.SetValue(tooltip, text, null);
+            FieldTooltipShowCustomFromCode.SetValue(tooltip, true);
+            return tooltip;
+        }
 
         private static bool ValidateRegistration(UiWindowRegistration registration)
         {
@@ -615,6 +734,7 @@ namespace SolarExpanse.WindowManager
             _showNotificationButton = null;
             _showNotificationButtonRect = null;
             _notificationHistoryTemplate = null;
+            _nativeTooltipWindow = null;
             _font = null;
             _buttonGroupPlacementNeedsRestore = false;
         }
@@ -1065,6 +1185,7 @@ namespace SolarExpanse.WindowManager
         private GameObject _buttonObject;
         private Image _buttonImage;
         private UiStatusDotPresenter _dotPresenter;
+        private Component _buttonTooltip;
         private TextMeshProUGUI _statusText;
         private RectTransform _buttonRect;
         private GameObject _windowObject;
@@ -1235,6 +1356,7 @@ namespace SolarExpanse.WindowManager
             _buttonObject = null;
             _buttonImage = null;
             _dotPresenter = null;
+            _buttonTooltip = null;
             _statusText = null;
             _buttonRect = null;
             _windowObject = null;
@@ -1267,6 +1389,18 @@ namespace SolarExpanse.WindowManager
 
             var input = _buttonObject.AddComponent<UiWindowButtonInput>();
             input.Handle = this;
+
+            try
+            {
+                _buttonTooltip = SolarExpanseWindowManager.AddNativeTooltip(
+                    _buttonObject, _registration.DisplayName);
+                if (_buttonTooltip == null)
+                    _log?.LogWarning($"[SEWM] Native hover label unavailable for '{Id}'");
+            }
+            catch (Exception e)
+            {
+                _log?.LogWarning($"[SEWM] Failed to configure hover label for '{Id}': {e.Message}");
+            }
 
             GameObject iconGO = new GameObject("Icon", typeof(RectTransform));
             iconGO.transform.SetParent(_buttonObject.transform, false);

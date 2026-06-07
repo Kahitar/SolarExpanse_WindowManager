@@ -17,6 +17,7 @@ A unified window manager and windowing system for *Solar Expanse*.
 *   **Smart ESC Key Behavior:** Pressing `ESC` closes the topmost mod window first rather than immediately opening the game's pause menu.
 *   **Focused Window Ordering:** Click any window to bring it to the front. Windows automatically clamp to your screen when changing resolution.
 *   **Rich Status Indicators:** Mod buttons can display active states, anti-aliased notification dots, warning blinks, and status text.
+*   **Native Hover Labels:** Hovering a mod button shows its registered display name through the game's tooltip UI.
 
 ### For Developers / Modders
 *   **Zero Shell Boilerplate:** Register your window size, icon, and callbacks, and let SEWM handle the rest.
@@ -107,6 +108,7 @@ internal static class MyModUi
 ```
 
 `Icon` remains the required fallback sprite. `GameIconNames` is optional and is resolved at runtime against loaded Unity sprites and TextMeshPro sprite assets before falling back to `Icon`.
+`DisplayName` is also shown as the button's native game-style hover label.
 
 Update the generated icon reference after game updates:
 
