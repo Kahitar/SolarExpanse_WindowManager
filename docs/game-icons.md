@@ -1,7 +1,7 @@
 # Solar Expanse Game Icon Candidates
 
 This file is generated from `Assembly-CSharp.dll` by `mise run update-game-icons`.
-It lists icon- and sprite-related names discovered in the game's managed code so UI framework consumers can choose `UiWindowRegistration.GameIconNames` values before falling back to a generated icon.
+It lists icon- and sprite-related names discovered in the game's managed code so window manager consumers can choose `UiWindowRegistration.GameIconNames` values before falling back to a generated icon.
 
 Runtime lookup is case-insensitive and searches loaded Unity `Sprite` objects first, then TextMeshPro sprite assets. These names are candidates from code metadata; verify important choices in-game because some names may be fields or helper identifiers rather than loaded sprite asset names.
 

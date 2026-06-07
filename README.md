@@ -1,10 +1,10 @@
 # Solar Expanse Window Manager (SEWM)
 
-A unified UI framework and windowing system for *Solar Expanse*. 
+A unified window manager and windowing system for *Solar Expanse*. 
 
 **Solar Expanse Window Manager** acts as a central hub for UI mods. Instead of every mod cluttering your screen with disjointed buttons, custom windows, and conflicting hotkeys, SEWM consolidates them into a single, clean, draggable button group and provides a standardized, high-performance window shell that matches the game's native aesthetic.
 
-*This is a base utility mod. It does nothing on its own unless you have other mods installed that use it as a framework.*
+*This is a base utility mod. It does nothing on its own unless you have other mods installed that use it as a window manager.*
 
 ---
 
@@ -30,10 +30,10 @@ A unified UI framework and windowing system for *Solar Expanse*.
 ## Installation (Players)
 
 1.  Ensure you have **BepInEx** (v5.x) installed for *Solar Expanse*.
-2.  Download the latest release of `SolarExpanse.UIFramework.dll`.
+2.  Download the latest release of `SolarExpanse.WindowManager.dll`.
 3.  Place the execution DLL inside your game's plugin directory:
     ```text
-    Solar Expanse/BepInEx/plugins/SolarExpanse.UIFramework.dll
+    Solar Expanse/BepInEx/plugins/SolarExpanse.WindowManager.dll
     ```
 4.  Launch the game.
 
@@ -41,15 +41,15 @@ A unified UI framework and windowing system for *Solar Expanse*.
 
 ## Developer Quick Start
 
-To use Solar Expanse Window Manager as the base for your UI mod, follow these steps. For advanced implementations, please read the [Agent Integration Guide](docs/agent-ui-framework-integration.md) (or pass it to your AI code assistant).
+To use Solar Expanse Window Manager as the base for your UI mod, follow these steps. For advanced implementations, please read the [Agent Integration Guide](docs/agent-window-manager-integration.md) (or pass it to your AI code assistant).
 
 ### 1. Add Reference to your .csproj
-Add a project reference to the framework DLL, making sure to set `Private="false"` so the assembly is not duplicated in your build output.
+Add a project reference to the Window Manager DLL, making sure to set `Private="false"` so the assembly is not duplicated in your build output.
 
 ```xml
 <ItemGroup>
   <ProjectReference 
-    Include="../SolarExpanse_WindowManager/SolarExpanse.UIFramework.csproj"
+    Include="../SolarExpanse_WindowManager/SolarExpanse.WindowManager.csproj"
     Private="false" 
   />
 </ItemGroup>
@@ -60,11 +60,11 @@ Require the Window Manager in your main plugin class:
 
 ```cs
 using BepInEx;
-using SolarExpanse.UIFramework;
+using SolarExpanse.WindowManager;
 
 [BepInPlugin("com.mod.solarexpanse.mymod", "My Mod", "1.0.0")]
 [BepInDependency(
-    UiFrameworkPlugin.PluginGuid, 
+    WindowManagerPlugin.PluginGuid, 
     BepInDependency.DependencyFlags.HardDependency
 )]
 public class MyModPlugin : BaseUnityPlugin
@@ -79,17 +79,17 @@ public class MyModPlugin : BaseUnityPlugin
 ```
 
 ### 3. Register your Window shell
-Instantiate your UI window during your mod's startup using `SolarExpanseUi.RegisterWindow`:
+Instantiate your UI window during your mod's startup using `SolarExpanseWindowManager.RegisterWindow`:
 
 ```cs
-using SolarExpanse.UIFramework;
+using SolarExpanse.WindowManager;
 using UnityEngine;
 
 internal static class MyModUi
 {
     internal static IUiWindowHandle Register()
     {
-        return SolarExpanseUi.RegisterWindow(new UiWindowRegistration
+        return SolarExpanseWindowManager.RegisterWindow(new UiWindowRegistration
         {
             Id = "com.mod.solarexpanse.mymod.main",
             DisplayName = "My Mod Panel",
@@ -122,7 +122,7 @@ mise run update-game-icons
 
 This project uses `mise` to automate builds.
 
-Compile the framework assembly:
+Compile the Window Manager assembly:
 ```bash
 mise run build
 ```

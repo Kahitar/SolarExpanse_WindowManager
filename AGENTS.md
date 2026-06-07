@@ -1,27 +1,27 @@
 # AGENTS.md
 
-This repository is the base UI framework mod for Solar Expanse. It provides shared notification-area buttons, draggable button grouping, resizable game-styled windows, button status indicators, and ESC handling for UI mods.
+This repository is the base window manager mod for Solar Expanse. It provides shared notification-area buttons, draggable button grouping, resizable game-styled windows, button status indicators, and ESC handling for UI mods.
 
 ## Project Rules
 
 - Resolve game and BepInEx references through `SOLAR_EXPANSE_ROOT`.
 - Use `mise run build` from this directory for normal local builds.
 - Use `mise run package` from this directory for release packaging.
-- The built DLL is `SolarExpanse.UIFramework.dll`.
-- The plugin GUID is `com.mod.solarexpanse.uiframework`.
-- The public namespace for dependent mods is `SolarExpanse.UIFramework`.
-- This framework owns the shared `NotificationManager.Awake` UI injection point for framework-based UI mods. Dependent mods should register windows with `SolarExpanseUi.RegisterWindow(...)` instead of patching `NotificationManager.Awake` for their own button/window injection.
+- The built DLL is `SolarExpanse.WindowManager.dll`.
+- The plugin GUID is `com.mod.solarexpanse.windowmanager`.
+- The public namespace for dependent mods is `SolarExpanse.WindowManager`.
+- This window manager owns the shared `NotificationManager.Awake` UI injection point for window-manager-based UI mods. Dependent mods should register windows with `SolarExpanseWindowManager.RegisterWindow(...)` instead of patching `NotificationManager.Awake` for their own button/window injection.
 
 ## Agent Integration Documentation
 
-Agents building or migrating another mod to use this base UI framework must read and follow:
+Agents building or migrating another mod to use this base window manager must read and follow:
 
-- `docs/agent-ui-framework-integration.md`
+- `docs/agent-window-manager-integration.md`
 
-That document is specifically written for AI agents implementing new UI mods based on this framework. It includes the public API, expected integration steps, migration notes, and an agent-focused compatibility changelog.
+That document is specifically written for AI agents implementing new UI mods based on this window manager. It includes the public API, expected integration steps, migration notes, and an agent-focused compatibility changelog.
 
-Always keep `docs/agent-ui-framework-integration.md` up to date when changing public APIs, lifecycle behavior, styling behavior, layout assumptions, build/reference requirements, or compatibility expectations for dependent mods.
-If a framework change would require dependent mods to change code, add an entry to the compatibility changelog in that document in the same change.
+Always keep `docs/agent-window-manager-integration.md` up to date when changing public APIs, lifecycle behavior, styling behavior, layout assumptions, build/reference requirements, or compatibility expectations for dependent mods.
+If a window manager change would require dependent mods to change code, add an entry to the compatibility changelog in that document in the same change.
 
 ## Implementation Notes
 

@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Package SolarExpanse.UIFramework and create a GitHub release"
+#MISE description="Package SolarExpanse.WindowManager and create a GitHub release"
 #USAGE arg "[version]" help="Version to release, with or without v prefix"
 set -euo pipefail
 
@@ -7,7 +7,7 @@ script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 repo_root="$(cd -- "$script_dir/.." && pwd)"
 cd "$repo_root"
 
-name="SolarExpanse.UIFramework"
+name="SolarExpanse.WindowManager"
 version="${usage_version:-${1:-}}"
 
 if ! command -v gh >/dev/null 2>&1; then

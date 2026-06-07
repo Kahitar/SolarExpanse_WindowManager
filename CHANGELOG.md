@@ -32,7 +32,7 @@
 ### Added
 
 - Added optional `UiButtonStatus.BlinkOffColor` support for explicit two-color status-dot blinking.
-- Open framework windows now move with the shared button dock while the user drags it.
+- Open Window Manager windows now move with the shared button dock while the user drags it.
 
 ### Fixed
 
@@ -42,4 +42,4 @@
 
 ### Added
 
-- Initial shared UI framework mod for Solar Expanse BepInEx UI mods.
+- Initial shared window manager mod for Solar Expanse BepInEx UI mods.

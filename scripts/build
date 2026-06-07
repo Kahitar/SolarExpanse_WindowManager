@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#MISE description="Build the Solar Expanse UI Framework mod DLL"
+#MISE description="Build the Solar Expanse Window Manager mod DLL"
 set -euo pipefail
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
@@ -13,4 +13,4 @@ if ! command -v dotnet >/dev/null 2>&1; then
   exit 1
 fi
 
-dotnet build SolarExpanse.UIFramework.csproj -c "$configuration"
+dotnet build SolarExpanse.WindowManager.csproj -c "$configuration"

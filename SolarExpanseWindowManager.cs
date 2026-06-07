@@ -12,9 +12,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-namespace SolarExpanse.UIFramework
+namespace SolarExpanse.WindowManager
 {
-    public static class SolarExpanseUi
+    public static class SolarExpanseWindowManager
     {
         internal const float ButtonSize = 48f;
         internal const float WindowDropOffset = 4f;
@@ -39,7 +39,7 @@ namespace SolarExpanse.UIFramework
             new List<UiWindowHandleImpl>();
 
         private static ManualLogSource _log =
-            BepInEx.Logging.Logger.CreateLogSource("SolarExpanse.UIFramework");
+            BepInEx.Logging.Logger.CreateLogSource("SolarExpanse.WindowManager");
         private static NotificationManager _notificationManager;
         private static Button _showNotificationButton;
         private static RectTransform _showNotificationButtonRect;
@@ -125,7 +125,7 @@ namespace SolarExpanse.UIFramework
                 Button showButton = FieldShowNotificationHistory?.GetValue(notificationManager) as Button;
                 if (showButton == null)
                 {
-                    _log.LogError("[SEUI] showNotificationHistory not found; UI registrations remain unrealized");
+                    _log.LogError("[SEWM] showNotificationHistory not found; UI registrations remain unrealized");
                     return;
                 }
 
@@ -133,7 +133,7 @@ namespace SolarExpanse.UIFramework
                     FieldNotificationHistory?.GetValue(notificationManager) as GameObject;
                 if (historyTemplate == null)
                 {
-                    _log.LogError("[SEUI] notificationHistory not found; UI registrations remain unrealized");
+                    _log.LogError("[SEWM] notificationHistory not found; UI registrations remain unrealized");
                     return;
                 }
 
@@ -141,7 +141,7 @@ namespace SolarExpanse.UIFramework
                 RectTransform canvasRect = canvas != null ? canvas.GetComponent<RectTransform>() : null;
                 if (canvas == null || canvasRect == null)
                 {
-                    _log.LogError("[SEUI] notification button canvas not found; UI registrations remain unrealized");
+                    _log.LogError("[SEWM] notification button canvas not found; UI registrations remain unrealized");
                     return;
                 }
 
@@ -171,11 +171,11 @@ namespace SolarExpanse.UIFramework
                     RealizeHandle(handle);
                 RefreshButtonGroup();
 
-                _log.LogInfo($"[SEUI] Realized {SortedHandles.Count} registered UI window(s)");
+                _log.LogInfo($"[SEWM] Realized {SortedHandles.Count} registered UI window(s)");
             }
             catch (Exception e)
             {
-                _log.LogError($"[SEUI] realization exception: {e}");
+                _log.LogError($"[SEWM] realization exception: {e}");
             }
         }
 
@@ -299,36 +299,36 @@ namespace SolarExpanse.UIFramework
             bool valid = true;
             if (registration == null)
             {
-                _log.LogError("[SEUI] Rejecting null UI window registration");
+                _log.LogError("[SEWM] Rejecting null UI window registration");
                 return false;
             }
 
             if (string.IsNullOrEmpty(registration.Id))
             {
-                _log.LogError("[SEUI] Rejecting UI window registration with missing Id");
+                _log.LogError("[SEWM] Rejecting UI window registration with missing Id");
                 valid = false;
             }
             else if (Handles.ContainsKey(registration.Id))
             {
-                _log.LogError($"[SEUI] Rejecting duplicate UI window registration Id '{registration.Id}'");
+                _log.LogError($"[SEWM] Rejecting duplicate UI window registration Id '{registration.Id}'");
                 valid = false;
             }
 
             if (string.IsNullOrEmpty(registration.DisplayName))
             {
-                _log.LogError($"[SEUI] Rejecting UI window registration '{registration.Id}' with missing DisplayName");
+                _log.LogError($"[SEWM] Rejecting UI window registration '{registration.Id}' with missing DisplayName");
                 valid = false;
             }
 
             if (registration.Icon == null)
             {
-                _log.LogError($"[SEUI] Rejecting UI window registration '{registration.Id}' with missing Icon fallback");
+                _log.LogError($"[SEWM] Rejecting UI window registration '{registration.Id}' with missing Icon fallback");
                 valid = false;
             }
 
             if (registration.BuildContent == null)
             {
-                _log.LogError($"[SEUI] Rejecting UI window registration '{registration.Id}' with missing BuildContent");
+                _log.LogError($"[SEWM] Rejecting UI window registration '{registration.Id}' with missing BuildContent");
                 valid = false;
             }
 
@@ -388,7 +388,7 @@ namespace SolarExpanse.UIFramework
             }
             catch (Exception e)
             {
-                _log.LogError($"[SEUI] Failed to realize '{handle.Id}': {e}");
+                _log.LogError($"[SEWM] Failed to realize '{handle.Id}': {e}");
             }
         }
 
@@ -400,7 +400,7 @@ namespace SolarExpanse.UIFramework
             if (_buttonGroupObject != null && _buttonGroupRect != null)
                 return;
 
-            _buttonGroupObject = new GameObject("SEUI_ButtonGroup", typeof(RectTransform));
+            _buttonGroupObject = new GameObject("SEWM_ButtonGroup", typeof(RectTransform));
             _buttonGroupObject.transform.SetParent(_canvas.transform, false);
             _buttonGroupObject.transform.SetAsLastSibling();
 
@@ -599,10 +599,10 @@ namespace SolarExpanse.UIFramework
             }
             catch (Exception e)
             {
-                _log.LogWarning($"[SEUI] font discovery fallback: {e.Message}");
+                _log.LogWarning($"[SEWM] font discovery fallback: {e.Message}");
             }
 
-            _log.LogWarning("[SEUI] No TextMeshPro font found from notification UI");
+            _log.LogWarning("[SEWM] No TextMeshPro font found from notification UI");
             return null;
         }
 
@@ -834,7 +834,7 @@ namespace SolarExpanse.UIFramework
             get
             {
                 if (_generatedButtonSprite == null)
-                    _generatedButtonSprite = BuildBeveledSprite("SEUI_Button_Normal",
+                    _generatedButtonSprite = BuildBeveledSprite("SEWM_Button_Normal",
                         new Color(0.055f, 0.065f, 0.075f, 0.98f),
                         new Color(0.24f, 0.28f, 0.31f, 1f),
                         new Color(0.010f, 0.014f, 0.018f, 1f),
@@ -848,7 +848,7 @@ namespace SolarExpanse.UIFramework
             get
             {
                 if (_generatedActiveButtonSprite == null)
-                    _generatedActiveButtonSprite = BuildBeveledSprite("SEUI_Button_Active",
+                    _generatedActiveButtonSprite = BuildBeveledSprite("SEWM_Button_Active",
                         new Color(0.045f, 0.075f, 0.11f, 0.98f),
                         new Color(0.22f, 0.37f, 0.48f, 1f),
                         new Color(0.01f, 0.03f, 0.05f, 1f),
@@ -862,7 +862,7 @@ namespace SolarExpanse.UIFramework
             get
             {
                 if (_generatedGroupFrameSprite == null)
-                    _generatedGroupFrameSprite = BuildBeveledSprite("SEUI_Group_Frame",
+                    _generatedGroupFrameSprite = BuildBeveledSprite("SEWM_Group_Frame",
                         new Color(0.015f, 0.022f, 0.028f, 0.90f),
                         new Color(0.36f, 0.43f, 0.46f, 1f),
                         new Color(0.005f, 0.007f, 0.010f, 1f),
@@ -1129,7 +1129,7 @@ namespace SolarExpanse.UIFramework
         internal UiWindowHandleImpl(UiWindowRegistration registration)
         {
             _registration = registration;
-            _safeId = SolarExpanseUi.SanitizeId(registration.Id);
+            _safeId = SolarExpanseWindowManager.SanitizeId(registration.Id);
             _status = NormalizeStatus(default(UiButtonStatus));
         }
 
@@ -1186,7 +1186,7 @@ namespace SolarExpanse.UIFramework
             }
             catch (Exception e)
             {
-                _log.LogError($"[SEUI] OnOpen exception for '{Id}': {e}");
+                _log.LogError($"[SEWM] OnOpen exception for '{Id}': {e}");
             }
         }
 
@@ -1211,7 +1211,7 @@ namespace SolarExpanse.UIFramework
             }
             catch (Exception e)
             {
-                _log.LogError($"[SEUI] OnClose exception for '{Id}': {e}");
+                _log.LogError($"[SEWM] OnClose exception for '{Id}': {e}");
             }
         }
 
@@ -1228,9 +1228,9 @@ namespace SolarExpanse.UIFramework
             if (!IsRealized)
                 return;
 
-            FocusOrder = SolarExpanseUi.NextFocusOrder();
+            FocusOrder = SolarExpanseWindowManager.NextFocusOrder();
             _windowObject.transform.SetAsLastSibling();
-            SolarExpanseUi.KeepButtonGroupOnTop();
+            SolarExpanseWindowManager.KeepButtonGroupOnTop();
         }
 
         public void SetButtonStatus(UiButtonStatus status)
@@ -1267,8 +1267,8 @@ namespace SolarExpanse.UIFramework
             Rect canvasRect = _canvasRect.rect;
             Vector2 size = _windowRect.sizeDelta;
             Vector2 pos = _windowRect.anchoredPosition;
-            pos.x = SolarExpanseUi.ClampEvenIfTooSmall(pos.x, canvasRect.xMin, canvasRect.xMax - size.x);
-            pos.y = SolarExpanseUi.ClampEvenIfTooSmall(pos.y, canvasRect.yMin + size.y, canvasRect.yMax);
+            pos.x = SolarExpanseWindowManager.ClampEvenIfTooSmall(pos.x, canvasRect.xMin, canvasRect.xMax - size.x);
+            pos.y = SolarExpanseWindowManager.ClampEvenIfTooSmall(pos.y, canvasRect.yMin + size.y, canvasRect.yMax);
             _windowRect.anchoredPosition = pos;
         }
 
@@ -1296,16 +1296,16 @@ namespace SolarExpanse.UIFramework
 
         private void CreateButton(Transform parent, TMP_FontAsset font)
         {
-            _buttonObject = new GameObject($"SEUI_Button_{_safeId}", typeof(RectTransform));
+            _buttonObject = new GameObject($"SEWM_Button_{_safeId}", typeof(RectTransform));
             _buttonObject.transform.SetParent(parent, false);
             _buttonRect = _buttonObject.GetComponent<RectTransform>();
-            _buttonRect.sizeDelta = new Vector2(SolarExpanseUi.ButtonSize, SolarExpanseUi.ButtonSize);
+            _buttonRect.sizeDelta = new Vector2(SolarExpanseWindowManager.ButtonSize, SolarExpanseWindowManager.ButtonSize);
 
             var layout = _buttonObject.AddComponent<LayoutElement>();
-            layout.preferredWidth = SolarExpanseUi.ButtonSize;
-            layout.preferredHeight = SolarExpanseUi.ButtonSize;
-            layout.minWidth = SolarExpanseUi.ButtonSize;
-            layout.minHeight = SolarExpanseUi.ButtonSize;
+            layout.preferredWidth = SolarExpanseWindowManager.ButtonSize;
+            layout.preferredHeight = SolarExpanseWindowManager.ButtonSize;
+            layout.minWidth = SolarExpanseWindowManager.ButtonSize;
+            layout.minHeight = SolarExpanseWindowManager.ButtonSize;
             layout.flexibleWidth = 0f;
             layout.flexibleHeight = 0f;
 
@@ -1330,7 +1330,7 @@ namespace SolarExpanse.UIFramework
             iconRT.sizeDelta = new Vector2(28f, 28f);
             iconRT.anchoredPosition = new Vector2(0f, 2f);
             Image icon = iconGO.AddComponent<Image>();
-            icon.sprite = SolarExpanseUi.ResolveRegistrationIcon(_registration);
+            icon.sprite = SolarExpanseWindowManager.ResolveRegistrationIcon(_registration);
             icon.preserveAspect = true;
             icon.raycastTarget = false;
             if (_registration.IconTint.HasValue)
@@ -1381,7 +1381,7 @@ namespace SolarExpanse.UIFramework
         private void CreateWindow(Canvas canvas, GameObject historyTemplate, TMP_FontAsset font)
         {
             _windowObject = UnityEngine.Object.Instantiate(historyTemplate, canvas.transform);
-            _windowObject.name = $"SEUI_Window_{_safeId}";
+            _windowObject.name = $"SEWM_Window_{_safeId}";
             _windowObject.SetActive(true);
             _windowObject.transform.SetAsLastSibling();
 
@@ -1467,7 +1467,7 @@ namespace SolarExpanse.UIFramework
             }
             catch (Exception e)
             {
-                _log.LogError($"[SEUI] BuildContent exception for '{Id}': {e}");
+                _log.LogError($"[SEWM] BuildContent exception for '{Id}': {e}");
             }
 
             _windowObject.SetActive(false);
@@ -1489,11 +1489,11 @@ namespace SolarExpanse.UIFramework
 
             Vector3[] corners = new Vector3[4];
             _buttonRect.GetWorldCorners(corners);
-            Vector2 buttonTopLeft = SolarExpanseUi.CanvasLocalPointFromWorld(corners[1]);
-            Vector2 buttonBottomLeft = SolarExpanseUi.CanvasLocalPointFromWorld(corners[0]);
+            Vector2 buttonTopLeft = SolarExpanseWindowManager.CanvasLocalPointFromWorld(corners[1]);
+            Vector2 buttonBottomLeft = SolarExpanseWindowManager.CanvasLocalPointFromWorld(corners[0]);
             _windowRect.anchoredPosition = new Vector2(
                 buttonTopLeft.x,
-                buttonBottomLeft.y - SolarExpanseUi.WindowDropOffset);
+                buttonBottomLeft.y - SolarExpanseWindowManager.WindowDropOffset);
             ClampWindow();
         }
 
@@ -1509,7 +1509,7 @@ namespace SolarExpanse.UIFramework
                 bool hasText = !string.IsNullOrEmpty(_status.Text);
                 _statusText.gameObject.SetActive(hasText);
                 _statusText.text = _status.Text ?? string.Empty;
-                _statusText.color = _status.TextColor ?? SolarExpanseUi.MutedStatusTextColor;
+                _statusText.color = _status.TextColor ?? SolarExpanseWindowManager.MutedStatusTextColor;
             }
         }
 
@@ -1641,9 +1641,9 @@ namespace SolarExpanse.UIFramework
 
         private void OnDisable() => Canvas.willRenderCanvases -= BeforeCanvasRender;
 
-        private void LateUpdate() => SolarExpanseUi.EnsureButtonGroupVisible();
+        private void LateUpdate() => SolarExpanseWindowManager.EnsureButtonGroupVisible();
 
-        private static void BeforeCanvasRender() => SolarExpanseUi.EnsureButtonGroupVisible();
+        private static void BeforeCanvasRender() => SolarExpanseWindowManager.EnsureButtonGroupVisible();
     }
 
     internal sealed class UiButtonGroupMover : MonoBehaviour,
@@ -1702,7 +1702,7 @@ namespace SolarExpanse.UIFramework
             _dragConsumed = true;
             float scale = _canvas != null ? _canvas.scaleFactor : 1f;
             Vector2 delta = (screenPosition - _dragStartScreen) / scale;
-            SolarExpanseUi.MoveButtonGroup(_dragStartPosition + delta, storeUserPosition: true);
+            SolarExpanseWindowManager.MoveButtonGroup(_dragStartPosition + delta, storeUserPosition: true);
         }
 
         internal bool EndPress(Vector2 screenPosition)
@@ -1877,7 +1877,7 @@ namespace SolarExpanse.UIFramework
             _pauseScreenType = AccessTools.TypeByName("Game.UI.Screens.PauseScreen");
             if (_pauseScreenType == null)
             {
-                log.LogWarning("[SEUI] PauseScreen type not found; ESC window close disabled");
+                log.LogWarning("[SEWM] PauseScreen type not found; ESC window close disabled");
                 return;
             }
 
@@ -1902,7 +1902,7 @@ namespace SolarExpanse.UIFramework
             }
 
             if (count == 0)
-                log.LogWarning("[SEUI] PauseScreen fallback methods not found; ESC fallback disabled");
+                log.LogWarning("[SEWM] PauseScreen fallback methods not found; ESC fallback disabled");
 
             foreach (string name in new[] { "Awake", "Start" })
             {
@@ -1918,7 +1918,7 @@ namespace SolarExpanse.UIFramework
         private static bool VisibleSetPrefix(object __instance, bool value)
         {
             if (value && _pauseScreenType != null && _pauseScreenType.IsInstanceOfType(__instance) &&
-                SolarExpanseUi.CloseTopmostWindow())
+                SolarExpanseWindowManager.CloseTopmostWindow())
             {
                 _suppressFrame = Time.frameCount;
                 return false;
@@ -1949,7 +1949,7 @@ namespace SolarExpanse.UIFramework
             if (_suppressFrame == Time.frameCount)
                 return false;
 
-            if (SolarExpanseUi.CloseTopmostWindow())
+            if (SolarExpanseWindowManager.CloseTopmostWindow())
             {
                 _suppressFrame = Time.frameCount;
                 return false;
