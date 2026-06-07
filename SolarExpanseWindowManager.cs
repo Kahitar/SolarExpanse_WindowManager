@@ -32,12 +32,6 @@ namespace SolarExpanse.WindowManager
         private static readonly FieldInfo FieldNotificationPrefab =
             typeof(NotificationManager).GetField("notificationUIPrefab",
                 BindingFlags.Instance | BindingFlags.NonPublic);
-        internal static readonly FieldInfo FieldTooltipShowCustomFromCode =
-            typeof(ShowToolTip).GetField("showCustomFromCode",
-                BindingFlags.Instance | BindingFlags.NonPublic);
-        internal static readonly FieldInfo FieldTooltipAfterTime =
-            typeof(ShowToolTip).GetField("afterTime",
-                BindingFlags.Instance | BindingFlags.NonPublic);
 
         private static readonly Dictionary<string, UiWindowHandleImpl> Handles =
             new Dictionary<string, UiWindowHandleImpl>();
@@ -1439,18 +1433,7 @@ namespace SolarExpanse.WindowManager
                 return;
 
             _buttonTooltip = _buttonObject.AddComponent<ShowToolTip>();
-            string hoverText = _registration.HoverText ?? _registration.DisplayName;
-            _buttonTooltip.CustomTextFromCode = hoverText;
-
-            try
-            {
-                SolarExpanseWindowManager.FieldTooltipShowCustomFromCode?.SetValue(_buttonTooltip, true);
-                SolarExpanseWindowManager.FieldTooltipAfterTime?.SetValue(_buttonTooltip, 0f);
-            }
-            catch (Exception e)
-            {
-                _log?.LogWarning($"[SEWM] Failed to configure custom button hover label for '{Id}': {e.Message}");
-            }
+            _buttonTooltip.CustomTextFromCode = _registration.HoverText;
         }
 
         private void PlaceWindowBelowButton()
