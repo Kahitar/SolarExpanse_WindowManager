@@ -7,7 +7,3 @@ dotnet = "8"
 
 [task_config]
 includes = ["scripts"]
-
-[tasks.update-game-icons]
-description = "Discover game icon candidates and update docs/game-icons.md"
-run = "bash scripts/update-game-icons"
